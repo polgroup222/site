@@ -144,7 +144,7 @@ setInterval(tick, 5000);
 // ---------- приватність: автоматичне видалення ----------
 const daysSince = (t) => t ? (Date.now() - Date.parse(t)) / 864e5 : 0;
 function purge() {
-  if (ENV.AUTO_PURGE !== '1') return;   // за правилом власника: автоматично нічого не видаляємо
+  if (ENV.AUTO_PURGE === '0') return;   // власник погодив автовидалення (27.11): фото 30 днів, відео 60, неоплачені 7
   for (const o of listOrders()) {
     const d = odir(o.id), ref = o.sentAt || o.updatedAt;
     const done = ['sent', 'rejected', 'failed'].includes(o.status), stale = o.status === 'awaiting_payment' && daysSince(o.createdAt) > 7;
@@ -179,10 +179,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}a{color:var(--
 const CT = {
   'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano' },
     eta: (m) => `Otprilike još ${m} min. Stranica se sama osvežava.`, pay: 'Čim uplata bude potvrđena, počinjemo izradu.', mail: 'Poslaćemo vam i email kada bude spremno.',
-    dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: () => 'Preuzmite video i sačuvajte ga kod sebe.', steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'] },
+    dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: (d) => `Video čuvamo ${d} dana. Preuzmite ga na vreme.`, steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'] },
   uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано' },
     eta: (m) => `Приблизно ще ${m} хв. Сторінка оновлюється сама.`, pay: 'Щойно оплату підтвердимо, почнемо створення.', mail: 'Коли буде готово, ми також надішлемо лист.',
-    dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: () => 'Завантажте відео і збережіть його в себе.', steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'] },
+    dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'] },
 };
 CT['sr-Cyrl'] = CT['sr-Latn'];
 const ST = CT['sr-Latn'].st;
