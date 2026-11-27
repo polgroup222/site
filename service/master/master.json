@@ -52,5 +52,12 @@
   "crf": 16,
   "preset": "slow",
   "audio_bitrate": "256k"
+ },
+ "name_voice": {
+  "slot": "slot1",
+  "at": 31.2,
+  "orig_mean_db": -16,
+  "max_dur": 6.2,
+  "_note": "пауза в музиці 29.0–37.5 с; фраза «Aha, evo! {V}! Našao sam tvoje ime!» має закінчитися до 37.4"
  }
 }
