@@ -4,7 +4,7 @@
     max_size 20MB
   }
   # сервіс замовлень
-  @app path /api/* /o/* /admin /admin/* /health
+  @app path /api/* /o/* /porudzbina /admin /admin/* /health
   handle @app {
     reverse_proxy app:8080
   }

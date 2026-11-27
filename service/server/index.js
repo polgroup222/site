@@ -49,6 +49,10 @@ function save(o) {
   fs.writeFileSync(f + '.tmp', JSON.stringify(o, null, 2)); fs.renameSync(f + '.tmp', f);
 }
 const listOrders = () => fs.readdirSync(ORDERS).map(load).filter(Boolean).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+// короткий номер замовлення для клієнта (6 цифр, унікальний): вхід на /porudzbina = email + номер
+function newNo(taken = new Set(listOrders().map(o => o.no))) {
+  let n; do n = String(crypto.randomInt(100000, 1000000)); while (taken.has(n)); taken.add(n); return n;
+}
 // журнал: історія в самому замовленні + загальний файл подій за день (logs/РРРР-ММ-ДД.jsonl), нічого не видаляється
 const LOGS = path.join(DATA, 'logs'); fs.mkdirSync(LOGS, { recursive: true });
 function event(rec) {
@@ -79,6 +83,7 @@ function readBody(req, limit) {
   });
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const h = (v) => crypto.createHash('sha256').update(v).digest('hex');
 const safeEq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 function isAdmin(req) {
   if (!ADMIN_TOKEN) return false;
@@ -91,6 +96,11 @@ function rateLimited(ip) {
   const now = Date.now(), arr = (hits.get(ip) || []).filter(t => now - t < 600e3);
   arr.push(now); hits.set(ip, arr); return arr.length > 5;
 }
+const loginHits = new Map();
+function loginLimited(k) {   // не більше 5 спроб за 10 хв на IP і окремо на email
+  const now = Date.now(), arr = (loginHits.get(k) || []).filter(t => now - t < 600e3);
+  arr.push(now); loginHits.set(k, arr); if (loginHits.size > 5000) loginHits.clear(); return arr.length > 5;
+}
 function photoExt(buf) {
   if (buf[0] === 0xff && buf[1] === 0xd8) return 'jpg';
   if (buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
@@ -101,16 +111,16 @@ function photoExt(buf) {
 
 // ---------- лист клієнту (Resend, якщо є ключ) ----------
 const T = {
-  'sr-Latn': { subj: 'Vaša čestitka od Deda Mraza je spremna ✦', body: (n, u) => `Zdravo!\n\nČestitka za ${n} je spremna. Pogledajte i preuzmite je ovde:\n${u}\n\nSrećni praznici!\nČestitam · cestitam.eu` },
-  'sr-Cyrl': { subj: 'Ваша честитка од Деда Мраза је спремна ✦', body: (n, u) => `Здраво!\n\nЧеститка за ${n} је спремна. Погледајте и преузмите је овде:\n${u}\n\nСрећни празници!\nЧеститам · cestitam.eu` },
-  uk: { subj: 'Ваше відеопривітання готове ✦', body: (n, u) => `Вітаємо!\n\nПривітання для ${n} готове. Переглянути і завантажити:\n${u}\n\nЗі святами!\nČestitam · cestitam.eu` },
+  'sr-Latn': { subj: 'Vaša čestitka od Deda Mraza je spremna ✦', body: (n, u, no) => `Zdravo!\n\nČestitka za ${n} je spremna. Pogledajte i preuzmite je ovde:\n${u}\n\nBroj porudžbine: ${no}\nStranici možete pristupiti i preko cestitam.eu/porudzbina (email + broj porudžbine).\n\nSrećni praznici!\nČestitam · cestitam.eu` },
+  'sr-Cyrl': { subj: 'Ваша честитка од Деда Мраза је спремна ✦', body: (n, u, no) => `Здраво!\n\nЧеститка за ${n} је спремна. Погледајте и преузмите је овде:\n${u}\n\nБрој поруџбине: ${no}\nСтраници можете приступити и преко cestitam.eu/porudzbina (email + број поруџбине).\n\nСрећни празници!\nЧеститам · cestitam.eu` },
+  uk: { subj: 'Ваше відеопривітання готове ✦', body: (n, u, no) => `Вітаємо!\n\nПривітання для ${n} готове. Переглянути і завантажити:\n${u}\n\nНомер замовлення: ${no}\nСторінку можна відкрити й через cestitam.eu/porudzbina (email + номер замовлення).\n\nЗі святами!\nČestitam · cestitam.eu` },
 };
 async function emailCustomer(o) {
   const url = `${PUBLIC_URL}/o/${o.id}/${o.key}`;
   if (!ENV.RESEND_API_KEY || !ENV.MAIL_FROM) { log(o, `email: ключа нема, посилання для ручної відправки ${url}`); return false; }
   const t = T[o.lang] || T['sr-Latn'];
   const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${ENV.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: ENV.MAIL_FROM, to: [o.email], subject: t.subj, text: t.body(o.childName, url) }) });
+    body: JSON.stringify({ from: ENV.MAIL_FROM, to: [o.email], subject: t.subj, text: t.body(o.childName, url, o.no) }) });
   log(o, `email ${r.ok ? 'надіслано' : 'помилка ' + r.status}`); return r.ok;
 }
 
@@ -137,6 +147,9 @@ async function tick() {
   }
   save(o); busy = false; setImmediate(tick);
 }
+// старим замовленням присвоюємо короткий номер
+{ const taken = new Set(listOrders().map(o => o.no).filter(Boolean));
+  for (const o of listOrders()) if (!o.no) { o.no = newNo(taken); log(o, `присвоєно номер ${o.no}`); save(o); } }
 // після перезапуску: незавершені рендери повертаємо в чергу
 for (const o of listOrders()) if (o.status === 'rendering') { o.status = 'queued'; log(o, 'перезапуск сервера'); save(o); }
 setInterval(tick, 5000);
@@ -179,10 +192,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}a{color:var(--
 const CT = {
   'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano' },
     eta: (m) => `Otprilike još ${m} min. Stranica se sama osvežava.`, pay: 'Čim uplata bude potvrđena, počinjemo izradu.', mail: 'Poslaćemo vam i email kada bude spremno.',
-    dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: (d) => `Video čuvamo ${d} dana. Preuzmite ga na vreme.`, steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'] },
+    dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: (d) => `Video čuvamo ${d} dana. Preuzmite ga na vreme.`, steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'], no: 'Broj porudžbine' },
   uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано' },
     eta: (m) => `Приблизно ще ${m} хв. Сторінка оновлюється сама.`, pay: 'Щойно оплату підтвердимо, почнемо створення.', mail: 'Коли буде готово, ми також надішлемо лист.',
-    dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'] },
+    dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'], no: 'Номер замовлення' },
 };
 CT['sr-Cyrl'] = CT['sr-Latn'];
 const ST = CT['sr-Latn'].st;
@@ -206,13 +219,44 @@ function customerPage(o) {
 ${o.status === 'awaiting_payment' ? `<p class="muted">${esc(t.pay)}</p>` : ''}<p class="muted">${esc(t.mail)}</p></div>`;
   const live = !ready && !o.videoPurged && !['failed', 'rejected'].includes(o.status);
   return page('Čestitam', `<header class="top"><span class="logo">✳ Čestitam</span></header>
-<h1><small>${esc(t.title)}</small>${esc(o.childName)}</h1><ol class="steps">${steps}</ol><section class="card">${body}</section>
+<h1><small>${esc(t.title)}</small>${esc(o.childName)}</h1>${o.no ? `<p class="muted">${esc(t.no)}: <b class="tag">${esc(o.no)}</b></p>` : ''}<ol class="steps">${steps}</ol><section class="card">${body}</section>
 ${live ? '<script nonce="r">setTimeout(()=>location.reload(),30000)</script>' : ''}
 ${ready ? `<script nonce="r">const u=location.href.split('#')[0];document.getElementById('share').onclick=()=>navigator.share?navigator.share({title:document.title,url:u}).catch(()=>{}):navigator.clipboard.writeText(u);
 document.getElementById('copy').onclick=e=>navigator.clipboard.writeText(u).then(()=>{e.target.textContent=${JSON.stringify('✓ ' + t.copied)}});</script>` : ''}`, o.lang);
 }
+const LT = {
+  'sr-Latn': { title: 'Moja porudžbina', h: 'Preuzmite svoju čestitku', p: 'Za to su vam potrebni email sa kog ste poručili i broj porudžbine.', email: 'Email', no: 'Broj porudžbine', go: 'Uđi',
+    err: 'Email i broj porudžbine se ne poklapaju. Proverite i pokušajte ponovo.', many: 'Previše pokušaja. Pokušajte ponovo za 10 minuta.', help: 'Ne sećate se broja porudžbine? Nalazi se u emailu i na stranici posle porudžbine. Ako ga nemate, pišite nam.', home: '← Nazad na početnu' },
+  'sr-Cyrl': { title: 'Моја поруџбина', h: 'Преузмите своју честитку', p: 'За то су вам потребни email са ког сте поручили и број поруџбине.', email: 'Email', no: 'Број поруџбине', go: 'Уђи',
+    err: 'Email и број поруџбине се не поклапају. Проверите и покушајте поново.', many: 'Превише покушаја. Покушајте поново за 10 минута.', help: 'Не сећате се броја поруџбине? Налази се у email-у и на страници после поруџбине. Ако га немате, пишите нам.', home: '← Назад на почетну' },
+  uk: { title: 'Моє замовлення', h: 'Отримайте ваше привітання', p: 'Для цього потрібні email, з якого ви замовляли, і номер замовлення.', email: 'Email', no: 'Номер замовлення', go: 'Увійти',
+    err: 'Email і номер замовлення не збігаються. Перевірте й спробуйте ще раз.', many: 'Забагато спроб. Спробуйте ще раз за 10 хвилин.', help: 'Не пам’ятаєте номер замовлення? Він є в листі та на сторінці після замовлення. Якщо його немає, напишіть нам.', home: '← Повернутися на головну' },
+};
+function pickLang(req, q) {
+  if (LT[q]) return q;
+  const al = String(req.headers['accept-language'] || '').toLowerCase();
+  return /^(uk|ru)/.test(al) ? 'uk' : 'sr-Latn';
+}
+function loginPage(lang, err = '', email = '', no = '') {
+  const t = LT[lang], langs = [['sr-Latn', 'SR'], ['sr-Cyrl', 'СР'], ['uk', 'UA']].map(([k, l]) => k === lang ? `<b>${l}</b>` : `<a href="/porudzbina?lang=${k}">${l}</a>`).join(' · ');
+  return page(t.title + ' · Čestitam', `<style>
+.lg{display:grid;grid-template-columns:1fr 1fr;overflow:hidden;padding:0}.lg-art{background:url(/img/kuca.webp) center/cover;min-height:420px;position:relative}.lg-art:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,#0f231bcc)}
+.lg-f{padding:28px 26px;display:flex;flex-direction:column;gap:14px}.lg-f h1{font-size:clamp(26px,4vw,34px);margin:0}.lg-f label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--mut)}
+.lg-f input{font:16px system-ui,sans-serif;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:#0e211a;color:var(--ink)}.lg-f input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.lg-f .b{justify-content:center;width:100%;padding:14px;font-size:16px}.err{background:#c8453b22;border:1px solid var(--red);border-radius:12px;padding:10px 12px;margin:0;font-size:14px}.lang{font-size:14px;color:var(--mut)}
+@media(max-width:700px){.lg{grid-template-columns:1fr}.lg-art{min-height:180px}}</style>
+<header class="top"><a class="logo" href="/" style="text-decoration:none">✳ Čestitam</a><span class="lang">${langs}</span></header>
+<section class="card lg"><div class="lg-art" role="img" aria-label=""></div>
+<form class="lg-f" method="post" action="/porudzbina" style="display:flex"><input type="hidden" name="lang" value="${esc(lang)}">
+<h1>${esc(t.h)}</h1><p class="muted" style="margin:0">${esc(t.p)}</p>
+${err ? `<p class="err" role="alert">${esc(t[err])}</p>` : ''}
+<label>${esc(t.email)}<input type="email" name="email" required autocomplete="email" inputmode="email" value="${esc(email)}"></label>
+<label>${esc(t.no)}<input name="no" required inputmode="numeric" autocomplete="off" pattern="[0-9 ]{6,8}" maxlength="8" placeholder="482917" value="${esc(no)}"></label>
+<button class="b" type="submit">${esc(t.go)}</button>
+<p class="muted" style="margin:0">${esc(t.help)}</p><a class="muted" href="/">${esc(t.home)}</a></form></section>`, lang);
+}
 function adminPage() {
-  const rows = listOrders().slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(o.status)}</span> <span class="muted">${esc(o.email)} · ${esc(o.createdAt)} · ${esc(o.id)}</span>
+  const rows = listOrders().slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span> <span class="muted">${esc(o.email)} · ${esc(o.createdAt)} · ${esc(o.id)}</span>
 ${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${esc(o.result.reviewReasons.join(', '))}</p>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
 ${o.video && fs.existsSync(path.join(odir(o.id), o.video)) ? `<video controls preload="none" src="/admin/v/${o.id}.mp4"></video>` : ''}
 <p>${['awaiting_payment'].includes(o.status) ? btn(o, 'paid', 'Оплачено → у чергу') : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
@@ -259,11 +303,25 @@ const server = http.createServer(async (req, res) => {
       const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');
       fs.mkdirSync(odir(id), { recursive: true });
       fs.writeFileSync(path.join(odir(id), `photo.${ext}`), buf);
-      const o = { id, key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email,
+      const o = { id, no: newNo(), key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email,
         lang: ['uk', 'sr-Latn', 'sr-Cyrl'].includes(body.lang) ? body.lang : 'sr-Latn', photo: `photo.${ext}`,
         status: PAYMENT_MODE === 'none' ? 'queued' : 'awaiting_payment', nameCheck: nm.needsReview ? nm.reviewReasons : [], createdAt: new Date().toISOString() };
       log(o, 'створено'); save(o); setImmediate(tick);
-      return send(res, 201, { id, status: o.status, url: `${PUBLIC_URL}/o/${id}/${o.key}` });
+      return send(res, 201, { id, no: o.no, status: o.status, url: `${PUBLIC_URL}/o/${id}/${o.key}` });
+    }
+
+    // вхід клієнта: email + номер замовлення -> його сторінка
+    if (p === '/porudzbina' && req.method === 'GET') return send(res, 200, loginPage(pickLang(req, u.searchParams.get('lang'))), { 'Cache-Control': 'no-store' });
+    if (p === '/porudzbina' && req.method === 'POST') {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      const f = new URLSearchParams((await readBody(req, 4000)).toString('utf8'));
+      const lang = LT[f.get('lang')] ? f.get('lang') : 'sr-Latn';
+      const email = String(f.get('email') || '').trim().toLowerCase().slice(0, 120), no = String(f.get('no') || '').replace(/\D/g, '').slice(0, 8);
+      if (loginLimited('ip:' + ip) || (email && loginLimited('em:' + email))) { event({ msg: 'вхід клієнта: забагато спроб', ip, email }); return send(res, 429, loginPage(lang, 'many', email, no)); }
+      const o = no.length === 6 && listOrders().find(x => x.no === no && safeEq(h(String(x.email || '').toLowerCase()), h(email)));
+      if (!o) { event({ msg: 'вхід клієнта: не збіглося', ip, email, no }); return send(res, 200, loginPage(lang, 'err', email, no), { 'Cache-Control': 'no-store' }); }
+      log(o, `клієнт увійшов (${ip})`); save(o);
+      return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
     }
 
     let mm;
