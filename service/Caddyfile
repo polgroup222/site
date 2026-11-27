@@ -12,7 +12,11 @@
   @site path / /index.html /privacy.html /app.js /style.css /fonts/* /img/*
   handle @site {
     root * /srv/site
-    header Cache-Control "public, max-age=300"
+    # сторінка, скрипт і стилі завжди перевіряються (ETag), щоб після оновлення не змішувались стара й нова версії
+    @code path / /index.html /privacy.html /app.js /style.css
+    header @code Cache-Control "no-cache"
+    @static path /fonts/* /img/*
+    header @static Cache-Control "public, max-age=86400"
     file_server
   }
   # відео для головної: оригінали з /root/media на сервері, без перестиснення (у git не зберігаємо)
