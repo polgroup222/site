@@ -157,6 +157,7 @@ form.addEventListener('submit', async (e) => {
     out.hidden = false;
     form.reset(); preview.hidden = true; document.querySelector('.drop-text').textContent = t().fPhotoBtn;
     out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { location.href = j.url; }, 1800);   // одразу на сторінку заявки з кнопкою оплати
   } catch (err) { say(err.code === 'photo' ? t().ePhoto : t().eNet, 1, err.code === 'photo' ? fPhoto : null); }
   finally { btn.disabled = false; btn.textContent = t().send; }
 });
