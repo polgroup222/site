@@ -6,8 +6,22 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { resolveName } = require('../src/names');
-const { renderMaster } = require('../src/render-master');
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
+// рендер у дочірньому процесі: сервер лишається чуйним, поки йде ffmpeg
+function renderInChild(job) {
+  return new Promise((ok, fail) => {
+    const ch = spawn(process.execPath, [path.join(__dirname, 'render-job.js')], { stdio: ['pipe', 'pipe', 'inherit'], env: process.env });
+    let out = '';
+    ch.stdout.on('data', d => { out += d; if (out.length > 2e6) out = out.slice(-1e6); });
+    ch.on('error', fail);
+    ch.on('close', code => {
+      const line = out.trim().split('\n').pop();
+      let j; try { j = JSON.parse(line); } catch { return fail(new Error(`render-job exit ${code}`)); }
+      j.ok ? ok(j.r) : fail(new Error(j.error));
+    });
+    ch.stdin.end(JSON.stringify(job));
+  });
+}
 
 const ENV = process.env;
 const PORT = Number(ENV.PORT || 8080);
@@ -102,7 +116,7 @@ async function tick() {
   busy = true;
   o.status = 'rendering'; o.attempts = (o.attempts || 0) + 1; log(o, 'рендер почато'); save(o);
   try {
-    const r = await renderMaster({ id: 'video', name: o.childName, photo: path.join(odir(o.id), o.photo), master: MASTER,
+    const r = await renderInChild({ id: 'video', name: o.childName, photo: path.join(odir(o.id), o.photo), master: MASTER,
       outDir: path.join(odir(o.id), 'out'), allowSpend: true, voiceFile: o.voiceFile });
     o.result = { status: r.status, reviewReasons: r.reviewReasons, renderSeconds: r.renderSeconds, voice: r.voice };
     o.video = 'out/video.mp4';
