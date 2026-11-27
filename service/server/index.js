@@ -216,7 +216,7 @@ const ST = CT['sr-Latn'].st;
 function eta(o) {
   if (o.status === 'rendering') return Math.max(2, Math.round(AVG_RENDER_MIN - (Date.now() - Date.parse(o.updatedAt)) / 60e3));
   if (o.status !== 'queued') return null;
-  const q = listOrders().filter(x => x.status === 'queued').reverse(); const pos = q.findIndex(x => x.id === o.id);
+  const q = listOrders().filter(x => x.status === 'queued' && !x.test).reverse(); const pos = q.findIndex(x => x.id === o.id);
   return (pos + 1 + (busy ? 1 : 0)) * AVG_RENDER_MIN;
 }
 Object.assign(CT['sr-Latn'], {
@@ -375,7 +375,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') return send(res, 204, '');
     const u = new URL(req.url, PUBLIC_URL), p = u.pathname;
 
-    if (req.method === 'GET' && p === '/health') return send(res, 200, { ok: true, busy, queued: listOrders().filter(o => o.status === 'queued').length });
+    if (req.method === 'GET' && p === '/health') return send(res, 200, { ok: true, busy, queued: listOrders().filter(o => o.status === 'queued' && !o.test).length });
 
     if (req.method === 'POST' && p === '/api/orders') {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
