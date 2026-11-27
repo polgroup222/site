@@ -51,8 +51,10 @@ function save(o) {
 const listOrders = () => fs.readdirSync(ORDERS).map(load).filter(Boolean).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 // короткий номер замовлення для клієнта (6 цифр, унікальний): вхід на /porudzbina = email + номер
 // номер замовлення по порядку: CT-00001, CT-00002 … (seq — число, no — те, що бачить клієнт)
-const NO_PREFIX = 'CT-';
-const fmtNo = (n) => NO_PREFIX + String(n).padStart(5, '0');
+// дві літери спереду щоразу випадкові (без схожих на цифри I, O, Q), напр. KM-00006
+const LET = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+const letters = () => LET[crypto.randomInt(LET.length)] + LET[crypto.randomInt(LET.length)];
+const fmtNo = (n, l = letters()) => `${l}-${String(n).padStart(5, '0')}`;
 let lastSeq = 0;
 function newNo() { lastSeq += 1; return { seq: lastSeq, no: fmtNo(lastSeq) }; }
 // журнал: історія в самому замовленні + загальний файл подій за день (logs/РРРР-ММ-ДД.jsonl), нічого не видаляється
@@ -119,6 +121,7 @@ const T = {
 };
 async function emailCustomer(o) {
   const url = `${PUBLIC_URL}/o/${o.id}/${o.key}`;
+  if (!o.email) { log(o, 'email не вказано, відео лише на сайті'); return false; }
   if (!ENV.RESEND_API_KEY || !ENV.MAIL_FROM) { log(o, `email: ключа нема, посилання для ручної відправки ${url}`); return false; }
   const t = T[o.lang] || T['sr-Latn'];
   const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${ENV.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -163,7 +166,7 @@ async function tick() {
   for (const o of all) if (!o.seq) {
     if (o.no) o.noOld = o.no;   // старий 6-значний номер теж пускає на /porudzbina
     Object.assign(o, newNo()); log(o, `присвоєно номер ${o.no}`); save(o);
-  } }
+  } else if (/^CT-/.test(o.no)) { const was = o.no; o.no = fmtNo(o.seq); log(o, `номер ${was} → ${o.no} (літери тепер різні)`); save(o); } }
 // після перезапуску: незавершені рендери повертаємо в чергу
 for (const o of listOrders()) if (o.status === 'rendering') { o.status = 'queued'; log(o, 'перезапуск сервера'); save(o); }
 setInterval(tick, 5000);
@@ -211,7 +214,7 @@ const CT = {
     eta: (m) => `Приблизно ще ${m} хв. Сторінка оновлюється сама.`, pay: 'Щойно оплату підтвердимо, почнемо створення.', mail: 'Коли буде готово, ми також надішлемо лист.',
     dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'], no: 'Номер замовлення' },
 };
-CT['sr-Cyrl'] = CT['sr-Latn'];
+
 const ST = CT['sr-Latn'].st;
 function eta(o) {
   if (o.status === 'rendering') return Math.max(2, Math.round(AVG_RENDER_MIN - (Date.now() - Date.parse(o.updatedAt)) / 60e3));
@@ -222,15 +225,19 @@ function eta(o) {
 Object.assign(CT['sr-Latn'], {
   formed: 'Porudžbina je spremna za plaćanje', formedP: 'Proverite podatke i platite. Izrada počinje odmah posle uplate.',
   child: 'Ime deteta', email: 'Email', pay: 'Plati', payManual: 'Javićemo vam se sa uputstvom za plaćanje na ovaj email.',
-  paidH: 'Plaćeno! Predajemo porudžbinu na izradu', makingH: 'Montiramo video za vas', makingP: 'Sačuvajte broj porudžbine i email: sa njima uvek možete otvoriti ovu stranicu na cestitam.eu/porudzbina.',
+  paidH: 'Plaćeno! Predajemo porudžbinu na izradu', makingH: 'Montiramo video za vas', makingP: 'Video će se pojaviti ovde, na ovoj stranici. Sačuvajte broj porudžbine i email: sa njima uvek možete otvoriti stranicu na cestitam.eu/porudzbina.',
   failH: 'Plaćanje nije prošlo', failP: 'Novac nije skinut. Pokušajte ponovo: napravićemo novu porudžbinu sa novim brojem, sa istim imenom i fotografijom.', retry: 'Pokušaj ponovo',
-  copy1: 'Kopiraj', copied1: 'Kopirano', test: 'TEST porudžbina: plaćanje je simulirano, video se ne pravi.' });
+  copy1: 'Kopiraj', copied1: 'Kopirano', noMail: 'Niste ostavili email, zato sačuvajte link ove stranice: ovde će se pojaviti vaš video.', copyLink: 'Kopiraj link stranice', test: 'TEST porudžbina: plaćanje je simulirano, video se ne pravi.' });
 Object.assign(CT.uk, {
   formed: 'Заявку сформовано, залишилось оплатити', formedP: 'Перевірте дані й оплатіть. Створення починається одразу після оплати.',
   child: 'Ім’я дитини', email: 'Email', pay: 'Оплатити', payManual: 'Ми надішлемо інструкцію з оплати на цей email.',
-  paidH: 'Оплачено! Передаємо замовлення в роботу', makingH: 'Монтуємо відео для вас', makingP: 'Збережіть номер замовлення та email: з ними ви завжди відкриєте цю сторінку на cestitam.eu/porudzbina.',
+  paidH: 'Оплачено! Передаємо замовлення в роботу', makingH: 'Монтуємо відео для вас', makingP: 'Відео з’явиться тут, на цій сторінці. Збережіть номер замовлення та email: з ними ви завжди відкриєте сторінку на cestitam.eu/porudzbina.',
   failH: 'Оплата не пройшла', failP: 'Гроші не списано. Спробуйте ще раз: ми створимо нову заявку з новим номером, з тим самим ім’ям і фото.', retry: 'Спробувати ще раз',
-  copy1: 'Копіювати', copied1: 'Скопійовано', test: 'ТЕСТОВЕ замовлення: оплата імітується, відео не створюється.' });
+  copy1: 'Копіювати', copied1: 'Скопійовано', noMail: 'Ви не вказали email, тож збережіть посилання на цю сторінку: тут з’явиться ваше відео.', copyLink: 'Скопіювати посилання', test: 'ТЕСТОВЕ замовлення: оплата імітується, відео не створюється.' });
+function cyr(s){const p={'DŽ':'Џ','Dž':'Џ','dž':'џ','LJ':'Љ','Lj':'Љ','lj':'љ','NJ':'Њ','Nj':'Њ','nj':'њ','A':'А','B':'Б','C':'Ц','Č':'Ч','Ć':'Ћ','D':'Д','Đ':'Ђ','E':'Е','F':'Ф','G':'Г','H':'Х','I':'И','J':'Ј','K':'К','L':'Л','M':'М','N':'Н','O':'О','P':'П','R':'Р','S':'С','Š':'Ш','T':'Т','U':'У','V':'В','Z':'З','Ž':'Ж','a':'а','b':'б','c':'ц','č':'ч','ć':'ћ','d':'д','đ':'ђ','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'ј','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','r':'р','s':'с','š':'ш','t':'т','u':'у','v':'в','z':'з','ž':'ж'};
+  return s.replace(/(<[^>]*>)|(\b(?:cestitam\.eu\/porudzbina|Full HD|TV|JPG|PNG|HEIC|MB|email|TEST)\b)|DŽ|Dž|dž|LJ|Lj|lj|NJ|Nj|nj|[A-Za-zČĆĐŠŽčćđšž]/g,(m,tag,keep)=>tag||keep||(p[m]||m));}
+// сторінка клієнта кирилицею: перекладаємо латиницю автоматично (як на сайті)
+CT['sr-Cyrl'] = Object.fromEntries(Object.entries(CT['sr-Latn']).map(([k, v]) => [k, typeof v === 'string' ? cyr(v) : typeof v === 'function' ? (...a) => cyr(v(...a)) : Array.isArray(v) ? v.map(cyr) : Object.fromEntries(Object.entries(v).map(([x, y]) => [x, cyr(y)]))]));
 const canPay = (o) => o.test || PAYMENT_MODE === 'mock';   // Stripe підключимо тут же: PAYMENT_MODE=stripe
 function customerPage(o, flash = '') {
   const t = CT[o.lang] || CT['sr-Latn'], ready = o.status === 'sent' && !o.videoPurged;
@@ -238,7 +245,7 @@ function customerPage(o, flash = '') {
   const m = eta(o), base = `/o/${o.id}/${o.key}`;
   const steps = t.steps.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><span>${i < step ? '✓' : i + 1}</span>${esc(s)}</li>`).join('');
   const row = (label, val, copy) => `<div class="kv"><span class="muted">${esc(label)}</span><b>${esc(val)}</b>${copy ? `<button class="b ghost cp" data-v="${esc(val)}">⧉ ${esc(t.copy1)}</button>` : ''}</div>`;
-  const facts = (copy) => `<div class="facts">${row(t.no, o.no || o.id, copy)}${row(t.email, o.email, copy)}${row(t.child, o.childName)}</div>`;
+  const facts = (copy) => `<div class="facts">${row(t.no, o.no || o.id, copy)}${o.email ? row(t.email, o.email, copy) : ''}${row(t.child, o.childName)}</div>${o.email ? '' : `<div class="kv"><span class="muted">${esc(t.noMail)}</span><button class="b cp" data-v="${esc(PUBLIC_URL + base)}">⧉ ${esc(t.copyLink)}</button></div>`}`;
   let body;
   if (ready) body = `<video controls playsinline preload="metadata" src="${base}/video.mp4"></video>
 <div class="actions"><a class="b" href="${base}/video.mp4?dl=1">⬇ ${esc(t.dl)}</a><button class="b ghost" id="share">↗ ${esc(t.share)}</button><button class="b ghost" id="copy">⧉ ${esc(t.copy)}</button></div>
@@ -250,7 +257,7 @@ ${canPay(o) ? `<form method="post" action="${base}/pay"><button class="b wide">$
 <form method="post" action="${base}/retry"><button class="b wide red">${esc(t.retry)}</button></form>`;
   else if (['queued', 'rendering', 'review'].includes(o.status)) body = `<div class="wait"><div class="flake">❄</div>
 ${flash === 'paid' ? `<p class="ok">✓ ${esc(t.paidH)}</p>` : ''}<p class="big">${esc(t.makingH)}</p>${m && !o.test ? `<p class="muted">${esc(t.eta(m))}</p>` : ''}</div>
-${facts(true)}<p class="muted">${esc(t.makingP)}</p><p class="muted">${esc(t.mail)}</p>`;
+${facts(true)}<p class="muted">${esc(t.makingP)}</p>${o.email ? `<p class="muted">${esc(t.mail)}</p>` : ''}`;
   else body = `<div class="wait"><p class="big">${esc(t.st[o.status] || o.status)}</p></div>${facts(true)}`;
   const live = ['queued', 'rendering', 'review'].includes(o.status) && !o.test;
   return page('Čestitam', `<style>.facts{display:grid;gap:8px;margin:16px 0}.kv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#0e211a}
@@ -382,7 +389,7 @@ const server = http.createServer(async (req, res) => {
       if (rateLimited(ip)) return send(res, 429, { error: 'too_many' });
       const body = JSON.parse((await readBody(req, MAX_PHOTO * 1.4 + 20000)).toString('utf8'));
       const name = String(body.name || '').trim().slice(0, 40), email = String(body.email || '').trim().slice(0, 120);
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: 'email' });
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: 'email' });   // email за бажанням
       const nm = resolveName(name); if (!name || !nm.ok) return send(res, 400, { error: 'name' });
       const m = /^data:image\/[a-z0-9.+-]+;base64,(.+)$/i.exec(String(body.photo || ''));
       if (!m) return send(res, 400, { error: 'photo' });
@@ -412,8 +419,8 @@ const server = http.createServer(async (req, res) => {
       const lang = LT[f.get('lang')] ? f.get('lang') : 'sr-Latn';
       const email = String(f.get('email') || '').trim().toLowerCase().slice(0, 120), no = String(f.get('no') || '').replace(/\D/g, '').slice(0, 8);
       if (loginLimited('ip:' + ip) || (email && loginLimited('em:' + email))) { event({ msg: 'вхід клієнта: забагато спроб', ip, email }); return send(res, 429, loginPage(lang, 'many', email, no)); }
-      const n = Number(no), em = (x) => safeEq(h(String(x.email || '').toLowerCase()), h(email));
-      const o = no && (listOrders().find(x => x.seq === n && em(x)) || (no.length === 6 && listOrders().find(x => x.noOld === no && em(x))));
+      const lt = (String(f.get('no') || '').match(/[a-z]{2}/i) || [''])[0].toUpperCase(), n = Number(no), em = (x) => safeEq(h(String(x.email || '').toLowerCase()), h(email));
+      const o = no && email && (listOrders().find(x => x.seq === n && em(x) && (!lt || String(x.no).startsWith(lt + '-'))) || (no.length === 6 && listOrders().find(x => x.noOld === no && em(x))));
       if (!o) { event({ msg: 'вхід клієнта: не збіглося', ip, email, no }); return send(res, 200, loginPage(lang, 'err', email, no), { 'Cache-Control': 'no-store' }); }
       log(o, `клієнт увійшов (${ip})`); save(o);
       return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
