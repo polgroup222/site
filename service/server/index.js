@@ -49,7 +49,14 @@ function save(o) {
   fs.writeFileSync(f + '.tmp', JSON.stringify(o, null, 2)); fs.renameSync(f + '.tmp', f);
 }
 const listOrders = () => fs.readdirSync(ORDERS).map(load).filter(Boolean).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-const log = (o, msg) => { (o.log ||= []).push(`${new Date().toISOString()} ${msg}`); };
+// журнал: історія в самому замовленні + загальний файл подій за день (logs/РРРР-ММ-ДД.jsonl), нічого не видаляється
+const LOGS = path.join(DATA, 'logs'); fs.mkdirSync(LOGS, { recursive: true });
+function event(rec) {
+  const ts = new Date().toISOString();
+  try { fs.appendFileSync(path.join(LOGS, ts.slice(0, 10) + '.jsonl'), JSON.stringify({ ts, ...rec }) + '\n'); } catch (e) { console.error('log', e.message); }
+}
+const log = (o, msg) => { const ts = new Date().toISOString(); (o.log ||= []).push(`${ts} ${msg}`);
+  event({ order: o.id, name: o.childName, email: o.email, status: o.status, msg }); };
 
 // ---------- HTTP-допоміжні ----------
 function send(res, code, body, headers = {}) {
@@ -137,6 +144,7 @@ setInterval(tick, 5000);
 // ---------- приватність: автоматичне видалення ----------
 const daysSince = (t) => t ? (Date.now() - Date.parse(t)) / 864e5 : 0;
 function purge() {
+  if (ENV.AUTO_PURGE !== '1') return;   // за правилом власника: автоматично нічого не видаляємо
   for (const o of listOrders()) {
     const d = odir(o.id), ref = o.sentAt || o.updatedAt;
     const done = ['sent', 'rejected', 'failed'].includes(o.status), stale = o.status === 'awaiting_payment' && daysSince(o.createdAt) > 7;
@@ -171,10 +179,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}a{color:var(--
 const CT = {
   'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano' },
     eta: (m) => `Otprilike još ${m} min. Stranica se sama osvežava.`, pay: 'Čim uplata bude potvrđena, počinjemo izradu.', mail: 'Poslaćemo vam i email kada bude spremno.',
-    dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: (d) => `Video čuvamo ${d} dana. Preuzmite ga na vreme.`, steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'] },
+    dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: () => 'Preuzmite video i sačuvajte ga kod sebe.', steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'] },
   uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано' },
     eta: (m) => `Приблизно ще ${m} хв. Сторінка оновлюється сама.`, pay: 'Щойно оплату підтвердимо, почнемо створення.', mail: 'Коли буде готово, ми також надішлемо лист.',
-    dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'] },
+    dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: () => 'Завантажте відео і збережіть його в себе.', steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'] },
 };
 CT['sr-Cyrl'] = CT['sr-Latn'];
 const ST = CT['sr-Latn'].st;
@@ -209,7 +217,8 @@ ${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${es
 ${o.video && fs.existsSync(path.join(odir(o.id), o.video)) ? `<video controls preload="none" src="/admin/v/${o.id}.mp4"></video>` : ''}
 <p>${['awaiting_payment'].includes(o.status) ? btn(o, 'paid', 'Оплачено → у чергу') : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
 ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Перерендерити') : ''}${o.status !== 'rejected' ? btn(o, 'reject', 'Скасувати') : ''}
-<a class="muted" href="/o/${o.id}/${o.key}">сторінка клієнта</a></p></div>`).join('');
+<a class="muted" href="/o/${o.id}/${o.key}">сторінка клієнта</a></p>
+<details><summary class="muted">Історія (${(o.log || []).length})</summary><pre class="muted" style="white-space:pre-wrap">${esc((o.log || []).join('\n'))}</pre></details></div>`).join('');
   return page('Адмінка', `<h1>Замовлення</h1><p class="muted">Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Поки порожньо.</p>'}`);
 }
 const btn = (o, act, label) => `<form method="post" action="/admin/${o.id}/${act}"><button class="b">${label}</button></form> `;
@@ -270,6 +279,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/admin/login' && req.method === 'GET') {
       const t = u.searchParams.get('token') || '';
       if (!ADMIN_TOKEN || !safeEq(crypto.createHash('sha256').update(t).digest('hex'), crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex'))) return send(res, 403, page('Ні', '<h1>Доступ заборонено</h1>'));
+      event({ msg: 'адмін увійшов', ip: (req.headers['x-forwarded-for'] || '').split(',')[0] });
       return send(res, 302, '', { 'Set-Cookie': `adm=${crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex')}; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=2592000`, Location: '/admin' });
     }
     if (p.startsWith('/admin')) {
