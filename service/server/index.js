@@ -124,6 +124,14 @@ async function emailCustomer(o) {
   log(o, `email ${r.ok ? 'надіслано' : 'помилка ' + r.status}`); return r.ok;
 }
 
+// ---------- Telegram: сповіщення власнику (TG_BOT_TOKEN + TG_CHAT_ID у .env) ----------
+function notify(o, what) {
+  if (!ENV.TG_BOT_TOKEN || !ENV.TG_CHAT_ID) return;
+  const text = `${what}\n№ ${o.no || o.id} · ${o.childName} · ${o.email}\n${PUBLIC_URL}/admin?q=${o.no || o.id}`;
+  fetch(`https://api.telegram.org/bot${ENV.TG_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: ENV.TG_CHAT_ID, text, disable_web_page_preview: true }) }).catch(e => console.error('tg', e.message));
+}
+
 // ---------- воркер: одне замовлення за раз ----------
 let busy = false;
 async function tick() {
@@ -140,10 +148,10 @@ async function tick() {
     // проміжні великі файли не тримаємо
     for (const f of ['portrait_overlay.mkv']) fs.rmSync(path.join(odir(o.id), 'out', f), { force: true });
     if (r.status === 'done' && AUTO_SEND) { o.status = 'sent'; await emailCustomer(o); }
-    else o.status = 'review';
+    else { o.status = 'review'; notify(o, '🎬 Відео готове, перевірте'); }
     log(o, `рендер готовий: ${r.status} ${r.reviewReasons.join(',')}`);
   } catch (e) {
-    o.status = o.attempts >= 2 ? 'failed' : 'queued'; o.error = String(e.message || e).slice(0, 2000); log(o, 'помилка: ' + o.error.slice(0, 300));
+    o.status = o.attempts >= 2 ? 'failed' : 'queued'; o.error = String(e.message || e).slice(0, 2000); if (o.status === 'failed') notify(o, '⚠️ Рендер не вдався'); log(o, 'помилка: ' + o.error.slice(0, 300));
   }
   save(o); busy = false; setImmediate(tick);
 }
@@ -255,15 +263,42 @@ ${err ? `<p class="err" role="alert">${esc(t[err])}</p>` : ''}
 <button class="b" type="submit">${esc(t.go)}</button>
 <p class="muted" style="margin:0">${esc(t.help)}</p><a class="muted" href="/">${esc(t.home)}</a></form></section>`, lang);
 }
-function adminPage() {
-  const rows = listOrders().slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span> <span class="muted">${esc(o.email)} · ${esc(o.createdAt)} · ${esc(o.id)}</span>
+const CSV_COLS = [['no', 'Номер'], ['createdAt', 'Створено'], ['childName', "Ім'я дитини"], ['email', 'Email'], ['lang', 'Мова'], ['status', 'Статус'],
+  ['amount', 'Сума'], ['payMethod', 'Оплата'], ['paidAt', 'Оплачено'], ['sentAt', 'Надіслано'], ['note', 'Нотатка']];
+function ordersCsv(bom = true) {   // лише дані замовлення, без фото і відео
+  const q = (v) => { v = String(v ?? ''); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+  return (bom ? '\ufeff' : '') + [CSV_COLS.map(c => c[1]).join(','), ...listOrders().map(o => CSV_COLS.map(([k]) => q(k === 'status' ? (STU[o.status] || o.status) : o[k])).join(','))].join('\n');
+}
+const STU = { awaiting_payment: 'Чекає оплату', queued: 'У черзі', rendering: 'Рендер', review: 'На перевірці', sent: 'Надіслано', failed: 'Помилка', rejected: 'Скасовано' };
+function adminPage(q = '', st = '') {
+  const all = listOrders(), day = new Date().toISOString().slice(0, 10), wk = Date.now() - 7 * 864e5;
+  const cnt = (f) => all.filter(f).length, money = all.reduce((a, o) => a + (Number(o.amount) || 0), 0);
+  const rs = all.map(o => o.result?.renderSeconds).filter(Boolean), avg = rs.length ? Math.round(rs.reduce((a, b) => a + b, 0) / rs.length / 60) : null;
+  let disk = ''; try { const f = fs.statfsSync(DATA); disk = Math.round(f.bavail * f.bsize / 1e9) + ' ГБ'; } catch {}
+  const tiles = [['Сьогодні', cnt(o => o.createdAt.startsWith(day))], ['За 7 днів', cnt(o => Date.parse(o.createdAt) > wk)], ['Чекають оплату', cnt(o => o.status === 'awaiting_payment')],
+    ['Черга / рендер', cnt(o => ['queued', 'rendering'].includes(o.status))], ['На перевірці', cnt(o => o.status === 'review')], ['Надіслано', cnt(o => o.status === 'sent')],
+    ['Виручка', money ? money.toLocaleString('uk-UA') : '0'], ['Сер. рендер', avg != null ? avg + ' хв' : '—'], ['Вільно на диску', disk || '—']]
+    .map(([l, v]) => `<div class="kpi"><span class="muted">${l}</span><b>${esc(String(v))}</b></div>`).join('');
+  const ql = q.trim().toLowerCase();
+  const list = all.filter(o => (!st || o.status === st) && (!ql || [o.no, o.id, o.childName, o.nameInput, o.email].some(v => String(v || '').toLowerCase().includes(ql))));
+  const opts = ['', ...Object.keys(STU)].map(k => `<option value="${k}"${k === st ? ' selected' : ''}>${k ? STU[k] : 'Усі статуси'}</option>`).join('');
+  const rows = list.slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(STU[o.status] || o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span> <span class="muted">${esc(o.email)} · ${esc(o.createdAt.slice(0, 16).replace('T', ' '))} · ${esc(o.lang)}</span>
+${o.nameInput && o.nameInput !== o.childName ? `<p class="muted">Введено: ${esc(o.nameInput)}</p>` : ''}${o.nameCheck?.length ? `<p class="muted">Ім'я перевірити: ${esc(o.nameCheck.join(', '))}</p>` : ''}
+${o.amount ? `<p class="muted">Оплата: ${esc(String(o.amount))} ${esc(o.payMethod || '')} · ${esc((o.paidAt || '').slice(0, 16).replace('T', ' '))}</p>` : ''}
 ${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${esc(o.result.reviewReasons.join(', '))}</p>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
 ${o.video && fs.existsSync(path.join(odir(o.id), o.video)) ? `<video controls preload="none" src="/admin/v/${o.id}.mp4"></video>` : ''}
-<p>${['awaiting_payment'].includes(o.status) ? btn(o, 'paid', 'Оплачено → у чергу') : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
+<p>${o.status === 'awaiting_payment' ? `<form method="post" action="/admin/${o.id}/paid" class="pay"><input name="amount" inputmode="decimal" placeholder="Сума" size="7"><select name="method"><option>картка</option><option>переказ</option><option>готівка</option><option>інше</option></select><button class="b">Оплачено → у чергу</button></form> ` : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
 ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Перерендерити') : ''}${o.status !== 'rejected' ? btn(o, 'reject', 'Скасувати') : ''}
 <a class="muted" href="/o/${o.id}/${o.key}">сторінка клієнта</a></p>
+<form method="post" action="/admin/${o.id}/note" class="note"><input name="note" maxlength="500" placeholder="Нотатка до замовлення" value="${esc(o.note || '')}"><button class="b ghost">Зберегти</button></form>
 <details><summary class="muted">Історія (${(o.log || []).length})</summary><pre class="muted" style="white-space:pre-wrap">${esc((o.log || []).join('\n'))}</pre></details></div>`).join('');
-  return page('Адмінка', `<h1>Замовлення</h1><p class="muted">Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Поки порожньо.</p>'}`);
+  return page('Адмінка', `<style>.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0 0 18px}.kpi{background:#173328;border:1px solid var(--line);border-radius:14px;padding:12px}.kpi b{display:block;font-size:24px;color:var(--gold)}
+.flt{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}input,select{font:15px system-ui,sans-serif;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0e211a;color:var(--ink)}.flt input{flex:1;min-width:200px}
+.note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}</style>
+<header class="top"><span class="logo">✳ Čestitam · CRM</span><a class="muted" href="/admin/export.csv">⬇ CSV</a></header>
+<div class="kpis">${tiles}</div>
+<form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
+<p class="muted">Знайдено: ${list.length}. Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Нічого не знайдено.</p>'}`);
 }
 const btn = (o, act, label) => `<form method="post" action="/admin/${o.id}/${act}"><button class="b">${label}</button></form> `;
 
@@ -306,10 +341,16 @@ const server = http.createServer(async (req, res) => {
       const o = { id, no: newNo(), key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email,
         lang: ['uk', 'sr-Latn', 'sr-Cyrl'].includes(body.lang) ? body.lang : 'sr-Latn', photo: `photo.${ext}`,
         status: PAYMENT_MODE === 'none' ? 'queued' : 'awaiting_payment', nameCheck: nm.needsReview ? nm.reviewReasons : [], createdAt: new Date().toISOString() };
-      log(o, 'створено'); save(o); setImmediate(tick);
+      log(o, 'створено'); save(o); notify(o, '🆕 Нове замовлення'); setImmediate(tick);
       return send(res, 201, { id, no: o.no, status: o.status, url: `${PUBLIC_URL}/o/${id}/${o.key}` });
     }
 
+    // Google Таблиця: =IMPORTDATA("https://…/api/export.csv?token=EXPORT_TOKEN"), лише дані замовлень, без фото
+    if (req.method === 'GET' && p === '/api/export.csv') {
+      const t = u.searchParams.get('token') || '';
+      if (!ENV.EXPORT_TOKEN || ENV.EXPORT_TOKEN.length < 24 || !safeEq(h(t), h(ENV.EXPORT_TOKEN))) return send(res, 403, { error: 'forbidden' });
+      return send(res, 200, ordersCsv(false), { 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store' });
+    }
     // вхід клієнта: email + номер замовлення -> його сторінка
     if (p === '/porudzbina' && req.method === 'GET') return send(res, 200, loginPage(pickLang(req, u.searchParams.get('lang'))), { 'Cache-Control': 'no-store' });
     if (p === '/porudzbina' && req.method === 'POST') {
@@ -342,16 +383,25 @@ const server = http.createServer(async (req, res) => {
     }
     if (p.startsWith('/admin')) {
       if (!isAdmin(req)) return send(res, 403, page('Ні', '<h1>Увійдіть через /admin/login?token=…</h1>'));
-      if (p === '/admin' && req.method === 'GET') return send(res, 200, adminPage());
+      if (p === '/admin' && req.method === 'GET') return send(res, 200, adminPage(u.searchParams.get('q') || '', u.searchParams.get('st') || ''), { 'Cache-Control': 'no-store' });
+      if (p === '/admin/export.csv') { event({ msg: 'адмін: експорт CSV' }); return send(res, 200, ordersCsv(), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="zamovlennya.csv"', 'Cache-Control': 'no-store' }); }
+      if ((mm = /^\/admin\/([\w-]+)\/note$/.exec(p)) && req.method === 'POST') {
+        const o = load(mm[1]); if (!o) return send(res, 404, {});
+        const f = new URLSearchParams((await readBody(req, 4000)).toString('utf8'));
+        o.note = String(f.get('note') || '').slice(0, 500); log(o, 'нотатка: ' + o.note); save(o);
+        return send(res, 303, '', { Location: '/admin?q=' + (o.no || o.id) });
+      }
       if ((mm = /^\/admin\/v\/([\w-]+)\.mp4$/.exec(p))) { const o = load(mm[1]); return o ? streamFile(req, res, path.join(odir(o.id), o.video || 'x')) : send(res, 404, {}); }
       if ((mm = /^\/admin\/([\w-]+)\/(paid|approve|rerender|reject)$/.exec(p)) && req.method === 'POST') {
         const o = load(mm[1]); if (!o) return send(res, 404, {});
         const act = mm[2];
-        if (act === 'paid') { o.status = 'queued'; o.paidAt = new Date().toISOString(); }
+        if (act === 'paid') { const f = new URLSearchParams((await readBody(req, 2000)).toString('utf8'));
+          const amt = Number(String(f.get('amount') || '').replace(',', '.')); if (amt > 0) o.amount = amt; o.payMethod = String(f.get('method') || '').slice(0, 20);
+          o.status = 'queued'; o.paidAt = new Date().toISOString(); notify(o, `💰 Оплачено ${o.amount || ''} ${o.payMethod}`); }
         if (act === 'approve') { o.status = 'sent'; o.sentAt = new Date().toISOString(); await emailCustomer(o); }
         if (act === 'rerender') { o.status = 'queued'; o.attempts = 0; delete o.error; }
         if (act === 'reject') o.status = 'rejected';
-        log(o, 'адмін: ' + act); save(o); setImmediate(tick);
+        log(o, 'адмін: ' + act + (act === 'paid' && o.amount ? ` ${o.amount} ${o.payMethod}` : '')); save(o); setImmediate(tick);
         return send(res, 303, '', { Location: '/admin' });
       }
     }
