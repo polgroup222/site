@@ -5,66 +5,82 @@
 <meta name="theme-color" content="#10251d">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="order-api" content="https://80-209-231-113.sslip.io">
-<title>Zimska pošta: čestitka od Deda Mraza sa imenom deteta</title>
-<meta name="description" content="Lična video-čestitka: Deda Mraz izgovara ime vašeg deteta, upisuje ga u čarobnu knjigu i kači njegovu fotografiju na zid.">
-<meta property="og:title" content="Zimska pošta: Deda Mraz zna ime vašeg deteta"><meta property="og:image" content="img/og.jpg"><meta property="og:type" content="website">
-<link rel="preload" href="img/knjiga-otvorena.webp" as="image">
+<title>Čestitam: Deda Mraz zna ime vašeg deteta</title>
+<meta name="description" content="Novogodišnja video-čestitka: Deda Mraz izgovara ime vašeg deteta, upisuje ga u čarobnu knjigu i kači njegovu fotografiju na zid.">
+<meta property="og:title" content="Čestitam: Deda Mraz zna ime vašeg deteta"><meta property="og:image" content="img/og.jpg"><meta property="og:type" content="website">
+<link rel="preload" href="img/deda-hero.webp" as="image">
 <link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="style.css">
 </head>
 <body>
 <a class="skip" href="#order" data-i="skip">Pređi na porudžbinu</a>
-<header class="bar">
-  <a class="brand" href="#top" aria-label="Zimska pošta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2 2.5M12 2l2 2.5M12 22l-2-2.5M12 22l2-2.5"/></svg><span data-i="brand">Zimska pošta</span></a>
-  <nav class="nav" aria-label="Sadržaj"><a href="#film" data-i="navFilm">Šta dete vidi</a><a href="#how" data-i="navHow">Kako radi</a><a href="#faq" data-i="navFaq">Pitanja</a></nav>
+<header class="bar over">
+  <a class="brand" href="#top" aria-label="Čestitam"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2 2.5M12 2l2 2.5M12 22l-2-2.5M12 22l2-2.5"/></svg><span data-i="brand">Čestitam</span></a>
+  <nav class="nav" aria-label="Sadržaj"><a href="#peek" data-i="navPeek">Iz filma</a><a href="#how" data-i="navHow">Kako radi</a><a href="#faq" data-i="navFaq">Pitanja</a></nav>
   <label class="lang"><span class="sr" data-i="langLabel">Jezik</span><select id="language"><option value="sr-Latn">SR</option><option value="sr-Cyrl">СР</option><option value="uk">UA</option></select></label>
   <a class="btn btn-sm" href="#order" data-i="cta">Napravi čestitku</a>
 </header>
 
 <main id="top">
-<section class="hero">
-  <div class="hero-copy">
-    <h1 data-i="heroTitle">Deda Mraz zna kako se zove vaše dete</h1>
-    <p class="lead" data-i="heroLead">Video od minut i po u kom Deda Mraz izgovara ime deteta, upisuje ga zlatnim slovima u čarobnu knjigu i kači njegovu fotografiju na zid svoje kuće.</p>
-    <label class="try" for="tryName"><span data-i="tryLabel">Upišite ime i pogledajte knjigu</span>
+<!-- 1. Deda Mraz kao veliki fon -->
+<section class="stage" aria-label="Deda Mraz">
+  <img class="stage-img" src="img/deda-hero.webp" width="1456" height="823" alt="" fetchpriority="high">
+  <div class="snowfall" aria-hidden="true"></div>
+  <span class="pill stage-pill" data-i="edition">Novogodišnje izdanje</span>
+  <!-- 2. sneg kao razdelnik -->
+  <svg class="drift" viewBox="0 0 1440 140" preserveAspectRatio="none" aria-hidden="true">
+    <path class="drift-back" d="M0 70 C120 40 220 95 360 72 C500 48 600 20 760 52 C900 80 1010 40 1150 46 C1280 52 1360 82 1440 64 V140 H0Z"/>
+    <path class="drift-front" d="M0 100 C140 72 260 118 420 98 C560 80 660 60 820 86 C980 112 1080 78 1220 82 C1330 86 1390 104 1440 96 V140 H0Z"/>
+  </svg>
+</section>
+
+<!-- 3. tekst ispod snega + proba imena -->
+<section class="intro">
+  <div class="intro-copy reveal">
+    <svg class="float f1" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/></svg>
+    <svg class="float f2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7C10 3 6 4 7.5 7M12 7c2-4 6-3 4.5 0"/></svg>
+    <svg class="float f3" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>
+    <h1 data-i="heroTitle">Deda Mraz zna ime vašeg deteta</h1>
+    <p class="lead" data-i="heroLead">Novogodišnji film u kom Deda Mraz izgovara ime deteta, upisuje ga u čarobnu knjigu i kači njegovu fotografiju na zid.</p>
+    <a class="btn" href="#order" data-i="cta">Napravi čestitku</a>
+  </div>
+  <div class="try-card reveal">
+    <figure class="book" id="book">
+      <img src="img/knjiga-otvorena.webp" width="1600" height="900" alt="" loading="lazy">
+      <div class="ink" id="ink" aria-live="polite"><span id="inkText">Milica</span></div>
+    </figure>
+    <label class="try" for="tryName"><span data-i="tryLabel">Upišite ime i pogledajte kako izgleda u knjizi</span>
       <input id="tryName" maxlength="20" autocomplete="off" spellcheck="false" value="Milica"></label>
-    <div class="hero-actions"><a class="btn" href="#order" data-i="cta">Napravi čestitku</a><a class="link" href="#film" data-i="heroLink">Pogledaj kadrove iz filma</a></div>
   </div>
-  <figure class="book" id="book">
-    <img src="img/knjiga-otvorena.webp" width="1600" height="900" alt="" fetchpriority="high">
-    <div class="ink" id="ink" aria-live="polite"><span id="inkText">Milica</span></div>
-    <figcaption data-i="bookCaption">Ovako će ime izgledati u knjizi, 33. sekunda filma</figcaption>
-  </figure>
 </section>
 
-<section class="film" id="film" aria-labelledby="filmTitle">
-  <div class="film-head">
-    <h2 id="filmTitle" data-i="filmTitle">Šta će dete videti</h2>
-    <p data-i="filmLead">Isti topao film za svako dete, a ime, glas i fotografija su samo njegovi.</p>
+<!-- 4. spojleri: nekoliko krupnih fotografija -->
+<section class="peek" id="peek" aria-labelledby="peekTitle">
+  <h2 id="peekTitle" class="reveal" data-i="peekTitle">Malo od onoga što dete čeka</h2>
+  <div class="bento">
+    <figure class="tile tile-big reveal"><img src="img/kuca.webp" loading="lazy" width="960" height="540" alt=""><figcaption class="pill" data-i="p1">Kuća Deda Mraza</figcaption></figure>
+    <figure class="tile reveal"><img src="img/irvasi.webp" loading="lazy" width="960" height="540" alt=""><figcaption class="pill" data-i="p2">Irvasi</figcaption></figure>
+    <figure class="tile reveal"><img src="img/radionica.webp" loading="lazy" width="960" height="540" alt=""><figcaption class="pill" data-i="p3">Radionica igračaka</figcaption></figure>
+    <div class="tile tile-note reveal">
+      <p class="note-big" data-i="noteBig">Ime, glas i fotografija samo vašeg deteta</p>
+      <ul class="chips"><li data-i="c1">Ime deteta</li><li data-i="c2">Njegova fotografija</li><li data-i="c3">Glas Deda Mraza</li><li>Full HD</li></ul>
+    </div>
   </div>
-  <ol class="strip">
-    <li><img src="img/kuca.webp" loading="lazy" width="960" height="540" alt=""><time>0:00</time><p data-i="f1">Kuća Deda Mraza pod polarnom svetlošću</p></li>
-    <li><img src="img/deda.webp" loading="lazy" width="960" height="540" alt=""><time>0:08</time><p data-i="f2">Deda Mraz se javlja detetu iz svoje sobe</p></li>
-    <li><img src="img/knjiga.webp" loading="lazy" width="960" height="540" alt=""><time>0:27</time><p data-i="f3">Otvara se čarobna knjiga dobre dece</p></li>
-    <li class="mine"><img src="img/knjiga-otvorena.webp" loading="lazy" width="1600" height="900" alt=""><time>0:31</time><p data-i="f4">Deda Mraz izgovara ime, a ono se ispisuje u knjizi</p></li>
-    <li class="mine"><img src="img/portret.webp" loading="lazy" width="960" height="540" alt=""><time>0:45</time><p data-i="f5">Fotografija deteta u ramu na zidu</p></li>
-    <li><img src="img/radionica.webp" loading="lazy" width="960" height="540" alt=""><time>1:02</time><p data-i="f6">Radionica igračaka</p></li>
-    <li><img src="img/irvasi.webp" loading="lazy" width="960" height="540" alt=""><time>1:18</time><p data-i="f7">Irvasi se spremaju za put</p></li>
-  </ol>
-  <p class="legend"><span class="dot"></span><span data-i="legend">Kadrovi koji se prave posebno za vaše dete</span></p>
 </section>
 
+<!-- 5. kako radi -->
 <section class="how" id="how" aria-labelledby="howTitle">
-  <h2 id="howTitle" data-i="howTitle">Kako radi</h2>
+  <h2 id="howTitle" class="reveal" data-i="howTitle">Kako radi</h2>
   <ol class="steps">
-    <li><h3 data-i="s1t">Pošaljite ime i fotografiju</h3><p data-i="s1p">Dovoljna je jedna jasna fotografija lica, snimljena telefonom.</p></li>
-    <li><h3 data-i="s2t">Mi pravimo film</h3><p data-i="s2p">Glas Deda Mraza izgovara ime, a mi pregledamo svaki video pre slanja.</p></li>
-    <li><h3 data-i="s3t">Dobijate link</h3><p data-i="s3p">Gledate na telefonu ili TV-u i preuzimate u Full HD kvalitetu.</p></li>
+    <li class="card reveal"><h3 data-i="s1t">Pošaljite ime i fotografiju</h3><p data-i="s1p">Dovoljna je jedna jasna fotografija lica, snimljena telefonom.</p></li>
+    <li class="card reveal"><h3 data-i="s2t">Mi pravimo film</h3><p data-i="s2p">Glas Deda Mraza izgovara ime, a mi pregledamo svaki video pre slanja.</p></li>
+    <li class="card reveal"><h3 data-i="s3t">Dobijate link</h3><p data-i="s3p">Gledate na telefonu ili TV-u i preuzimate u Full HD kvalitetu.</p></li>
   </ol>
 </section>
 
+<!-- 6. porudžbina (rad forme se ne menja) -->
 <section class="order" id="order" aria-labelledby="orderTitle">
-  <div class="order-art"><img src="img/hero.webp" loading="lazy" width="1920" height="1080" alt="" ><p data-i="orderArt">Deda Mraz se oprašta sa detetom na kraju filma.</p></div>
-  <form id="orderForm" class="form" novalidate>
+  <div class="order-art reveal"><img src="img/hero.webp" loading="lazy" width="1920" height="1080" alt=""><p data-i="orderArt">Deda Mraz se oprašta sa detetom na kraju filma.</p></div>
+  <form id="orderForm" class="form reveal" novalidate>
     <h2 id="orderTitle" data-i="orderTitle">Napravite čestitku</h2>
     <label class="field"><span data-i="fName">Ime deteta</span><input name="name" id="fName" required maxlength="30" autocomplete="off" spellcheck="false"><small data-i="fNameHint">Kako ga zovete kod kuće, na latinici. Na primer: Milica, Luka, Đorđe.</small></label>
     <div class="field photo">
@@ -80,6 +96,7 @@
   </form>
 </section>
 
+<!-- 7. pitanja -->
 <section class="faq" id="faq" aria-labelledby="faqTitle">
   <h2 id="faqTitle" data-i="faqTitle">Pitanja</h2>
   <details><summary data-i="q1">Koliko se čeka na video?</summary><p data-i="a1">Obično 15 do 30 minuta posle uplate. U danima pred Novu godinu može potrajati do nekoliko sati.</p></details>
@@ -90,7 +107,15 @@
 </section>
 </main>
 
-<footer class="foot"><p data-i="foot">Zimska pošta. Mali film za veliko verovanje.</p><a href="privacy.html" data-i="privacy">Privatnost</a></footer>
+<!-- 8. podnožje: kartice preko zlatne trake -->
+<footer class="foot">
+  <svg class="ribbon" viewBox="0 0 1440 420" preserveAspectRatio="none" aria-hidden="true"><path d="M-40 300 C200 120 360 420 620 250 C860 90 760 -20 600 80 C470 160 640 380 900 330 C1140 285 1180 120 1480 160"/></svg>
+  <div class="foot-grid">
+    <div class="card foot-card"><p class="foot-brand">Čestitam</p><p data-i="foot">Mali film za veliko verovanje.</p><a class="btn btn-sm" href="#order" data-i="cta">Napravi čestitku</a></div>
+    <div class="card foot-card"><p class="foot-h" data-i="footContact">Kontakt</p><p>cestitam.eu</p></div>
+    <div class="card foot-card"><p class="foot-h" data-i="footLegal">Pravila</p><a href="privacy.html" data-i="privacy">Privatnost</a></div>
+  </div>
+</footer>
 <script src="app.js"></script>
 </body>
 </html>

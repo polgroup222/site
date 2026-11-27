@@ -1,15 +1,15 @@
 'use strict';
-// Zimska pošta: jezik, živi pregled imena u knjizi, porudžbina (ime + fotografija + email -> server).
+// Čestitam: jezik, živi pregled imena u knjizi, porudžbina (ime + fotografija + email -> server).
 (function () {
 const T = {
 'sr-Latn': {
-  skip: 'Pređi na porudžbinu', brand: 'Zimska pošta', navFilm: 'Šta dete vidi', navHow: 'Kako radi', navFaq: 'Pitanja', langLabel: 'Jezik', cta: 'Napravi čestitku',
-  heroTitle: 'Deda Mraz zna kako se zove vaše dete',
-  heroLead: 'Video od minut i po u kom Deda Mraz izgovara ime deteta, upisuje ga zlatnim slovima u čarobnu knjigu i kači njegovu fotografiju na zid svoje kuće.',
-  tryLabel: 'Upišite ime i pogledajte knjigu', heroLink: 'Pogledaj kadrove iz filma', bookCaption: 'Ovako će ime izgledati u knjizi, 33. sekunda filma',
-  filmTitle: 'Šta će dete videti', filmLead: 'Isti topao film za svako dete, a ime, glas i fotografija su samo njegovi.',
-  f1: 'Kuća Deda Mraza pod polarnom svetlošću', f2: 'Deda Mraz se javlja detetu iz svoje sobe', f3: 'Otvara se čarobna knjiga dobre dece', f4: 'Deda Mraz izgovara ime, a ono se ispisuje u knjizi',
-  f5: 'Fotografija deteta u ramu na zidu', f6: 'Radionica igračaka', f7: 'Irvasi se spremaju za put', legend: 'Kadrovi koji se prave posebno za vaše dete',
+  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', langLabel: 'Jezik', cta: 'Napravi čestitku',
+  edition: 'Novogodišnje izdanje',
+  heroTitle: 'Deda Mraz zna ime vašeg deteta',
+  heroLead: 'Novogodišnji film u kom Deda Mraz izgovara ime deteta, upisuje ga u čarobnu knjigu i kači njegovu fotografiju na zid.',
+  tryLabel: 'Upišite ime i pogledajte kako izgleda u knjizi',
+  peekTitle: 'Malo od onoga što dete čeka', p1: 'Kuća Deda Mraza', p2: 'Irvasi', p3: 'Radionica igračaka',
+  noteBig: 'Ime, glas i fotografija samo vašeg deteta', c1: 'Ime deteta', c2: 'Njegova fotografija', c3: 'Glas Deda Mraza',
   howTitle: 'Kako radi', s1t: 'Pošaljite ime i fotografiju', s1p: 'Dovoljna je jedna jasna fotografija lica, snimljena telefonom.',
   s2t: 'Mi pravimo film', s2p: 'Glas Deda Mraza izgovara ime, a mi pregledamo svaki video pre slanja.', s3t: 'Dobijate link', s3p: 'Gledate na telefonu ili TV-u i preuzimate u Full HD kvalitetu.',
   orderArt: 'Deda Mraz se oprašta sa detetom na kraju filma.', orderTitle: 'Napravite čestitku',
@@ -27,16 +27,16 @@ const T = {
   q3: 'Koja fotografija je najbolja?', a3: 'Portret izbliza na kom lice zauzima veći deo slike. Fotografija iz daljine ispadne mutna u ramu.',
   q4: 'Šta radite sa fotografijom?', a4: 'Koristimo je samo za vaš video. Fotografiju brišemo 30 dana posle slanja, a video posle 60 dana.',
   q5: 'Na kom jeziku govori Deda Mraz?', a5: 'Na srpskom. Ime izgovara u vokativu, kako se dete i doziva: Milice, Luka, Đorđe.',
-  foot: 'Zimska pošta. Mali film za veliko verovanje.', privacy: 'Privatnost',
+  foot: 'Mali film za veliko verovanje.', footContact: 'Kontakt', footLegal: 'Pravila', privacy: 'Privatnost',
 },
 uk: {
-  skip: 'Перейти до замовлення', brand: 'Зимова пошта', navFilm: 'Що побачить дитина', navHow: 'Як це працює', navFaq: 'Запитання', langLabel: 'Мова', cta: 'Створити привітання',
-  heroTitle: 'Дід Мороз знає, як звати вашу дитину',
-  heroLead: 'Відео на півтори хвилини, у якому Дід Мороз вимовляє ім’я дитини, вписує його золотими літерами в чарівну книгу і вішає її фото на стіну свого будиночка.',
-  tryLabel: 'Впишіть ім’я латиницею і подивіться на книгу', heroLink: 'Подивитися кадри з фільму', bookCaption: 'Так ім’я виглядатиме в книзі, 33-тя секунда фільму',
-  filmTitle: 'Що побачить дитина', filmLead: 'Один теплий фільм для кожної дитини, але ім’я, голос і фото в ньому тільки її.',
-  f1: 'Будиночок Діда Мороза під полярним сяйвом', f2: 'Дід Мороз звертається до дитини зі своєї кімнати', f3: 'Відкривається чарівна книга чемних дітей', f4: 'Дід Мороз вимовляє ім’я, і воно з’являється в книзі',
-  f5: 'Фото дитини в рамці на стіні', f6: 'Майстерня іграшок', f7: 'Олені готуються в дорогу', legend: 'Кадри, які створюються саме для вашої дитини',
+  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', langLabel: 'Мова', cta: 'Створити привітання',
+  edition: 'Новорічний випуск',
+  heroTitle: 'Дід Мороз знає ім’я вашої дитини',
+  heroLead: 'Новорічний фільм, у якому Дід Мороз вимовляє ім’я дитини, вписує його в чарівну книгу і вішає її фото на стіну.',
+  tryLabel: 'Впишіть ім’я латиницею і подивіться, як воно виглядає в книзі',
+  peekTitle: 'Трохи з того, що чекає на дитину', p1: 'Будиночок Діда Мороза', p2: 'Олені', p3: 'Майстерня іграшок',
+  noteBig: 'Ім’я, голос і фото тільки вашої дитини', c1: 'Ім’я дитини', c2: 'Її фото', c3: 'Голос Діда Мороза',
   howTitle: 'Як це працює', s1t: 'Надішліть ім’я і фото', s1p: 'Достатньо одного чіткого фото обличчя, знятого на телефон.',
   s2t: 'Ми створюємо фільм', s2p: 'Голос Діда Мороза вимовляє ім’я, а ми переглядаємо кожне відео перед відправкою.', s3t: 'Ви отримуєте посилання', s3p: 'Дивіться на телефоні чи телевізорі й завантажуйте у Full HD.',
   orderArt: 'Дід Мороз прощається з дитиною наприкінці фільму.', orderTitle: 'Створіть привітання',
@@ -54,13 +54,14 @@ uk: {
   q3: 'Яке фото підійде найкраще?', a3: 'Портрет крупним планом, де обличчя займає більшу частину кадру. Фото здалеку в рамці вийде розмитим.',
   q4: 'Що ви робите з фото?', a4: 'Використовуємо лише для вашого відео. Фото видаляємо через 30 днів після відправки, відео через 60 днів.',
   q5: 'Якою мовою говорить Дід Мороз?', a5: 'Сербською. Ім’я він вимовляє в кличному відмінку, як до дитини звертаються: Milice, Luka, Đorđe.',
-  foot: 'Зимова пошта. Маленький фільм для великої віри.', privacy: 'Конфіденційність',
+  foot: 'Маленький фільм для великої віри.', footContact: 'Контакти', footLegal: 'Правила', privacy: 'Конфіденційність',
 },
 };
 function cyr(s){const p={'DŽ':'Џ','Dž':'Џ','dž':'џ','LJ':'Љ','Lj':'Љ','lj':'љ','NJ':'Њ','Nj':'Њ','nj':'њ','A':'А','B':'Б','C':'Ц','Č':'Ч','Ć':'Ћ','D':'Д','Đ':'Ђ','E':'Е','F':'Ф','G':'Г','H':'Х','I':'И','J':'Ј','K':'К','L':'Л','M':'М','N':'Н','O':'О','P':'П','R':'Р','S':'С','Š':'Ш','T':'Т','U':'У','V':'В','Z':'З','Ž':'Ж','a':'а','b':'б','c':'ц','č':'ч','ć':'ћ','d':'д','đ':'ђ','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'ј','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','r':'р','s':'с','š':'ш','t':'т','u':'у','v':'в','z':'з','ž':'ж'};
   return s.replace(/(<[^>]*>)|(\b(?:Full HD|TV|JPG|PNG|HEIC|MB|email)\b)|DŽ|Dž|dž|LJ|Lj|lj|NJ|Nj|nj|[A-Za-zČĆĐŠŽčćđšž]/g,(m,tag,keep)=>tag||keep||(p[m]||m));}
 T['sr-Cyrl'] = Object.fromEntries(Object.entries(T['sr-Latn']).map(([k, v]) => [k, cyr(v)]));
 // imena-primeri ostaju latinicom (tako ih upisujemo)
+T['sr-Cyrl'].brand = 'Čestitam';
 for (const k of ['fNameHint', 'a5']) T['sr-Cyrl'][k] = T['sr-Cyrl'][k].replace(/Милица, Лука, Ђорђе|Милице, Лука, Ђорђе/, m => k === 'a5' ? 'Milice, Luka, Đorđe' : 'Milica, Luka, Đorđe');
 
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
@@ -156,4 +157,12 @@ form.addEventListener('submit', async (e) => {
   } catch (err) { say(err.code === 'photo' ? t().ePhoto : t().eNet, 1, err.code === 'photo' ? fPhoto : null); }
   finally { btn.disabled = false; btn.textContent = t().send; }
 });
+// ---------- izgled: traka postaje puna posle Deda Mraza, blokovi se pojavljuju pri skrolu ----------
+const bar = document.querySelector('.bar.over'), stage = document.querySelector('.stage');
+if (bar && stage) { const onScroll = () => bar.classList.toggle('solid', window.scrollY > stage.offsetHeight - 80); window.addEventListener('scroll', onScroll, { passive: true }); onScroll(); }
+if ('IntersectionObserver' in window) {
+  document.documentElement.classList.add('js');
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+}
 })();

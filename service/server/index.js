@@ -80,9 +80,9 @@ function photoExt(buf) {
 
 // ---------- лист клієнту (Resend, якщо є ключ) ----------
 const T = {
-  'sr-Latn': { subj: 'Vaša čestitka od Deda Mraza je spremna ✦', body: (n, u) => `Zdravo!\n\nČestitka za ${n} je spremna. Pogledajte i preuzmite je ovde:\n${u}\n\nSrećni praznici!\nZimska pošta` },
-  'sr-Cyrl': { subj: 'Ваша честитка од Деда Мраза је спремна ✦', body: (n, u) => `Здраво!\n\nЧеститка за ${n} је спремна. Погледајте и преузмите је овде:\n${u}\n\nСрећни празници!\nЗимска пошта` },
-  uk: { subj: 'Ваше відеопривітання готове ✦', body: (n, u) => `Вітаємо!\n\nПривітання для ${n} готове. Переглянути і завантажити:\n${u}\n\nЗі святами!\nЗимова пошта` },
+  'sr-Latn': { subj: 'Vaša čestitka od Deda Mraza je spremna ✦', body: (n, u) => `Zdravo!\n\nČestitka za ${n} je spremna. Pogledajte i preuzmite je ovde:\n${u}\n\nSrećni praznici!\nČestitam · cestitam.eu` },
+  'sr-Cyrl': { subj: 'Ваша честитка од Деда Мраза је спремна ✦', body: (n, u) => `Здраво!\n\nЧеститка за ${n} је спремна. Погледајте и преузмите је овде:\n${u}\n\nСрећни празници!\nЧеститам · cestitam.eu` },
+  uk: { subj: 'Ваше відеопривітання готове ✦', body: (n, u) => `Вітаємо!\n\nПривітання для ${n} готове. Переглянути і завантажити:\n${u}\n\nЗі святами!\nČestitam · cestitam.eu` },
 };
 async function emailCustomer(o) {
   const url = `${PUBLIC_URL}/o/${o.id}/${o.key}`;
@@ -183,7 +183,7 @@ function customerPage(o) {
     : `<div class="wait"><div class="flake">❄</div><p class="big">${esc(t.st[o.status] || o.status)}</p>${m ? `<p class="muted">${esc(t.eta(m))}</p>` : ''}
 ${o.status === 'awaiting_payment' ? `<p class="muted">${esc(t.pay)}</p>` : ''}<p class="muted">${esc(t.mail)}</p></div>`;
   const live = !ready && !o.videoPurged && !['failed', 'rejected'].includes(o.status);
-  return page('Zimska pošta', `<header class="top"><span class="logo">✳ Zimska pošta</span></header>
+  return page('Čestitam', `<header class="top"><span class="logo">✳ Čestitam</span></header>
 <h1><small>${esc(t.title)}</small>${esc(o.childName)}</h1><ol class="steps">${steps}</ol><section class="card">${body}</section>
 ${live ? '<script nonce="r">setTimeout(()=>location.reload(),30000)</script>' : ''}
 ${ready ? `<script nonce="r">const u=location.href.split('#')[0];document.getElementById('share').onclick=()=>navigator.share?navigator.share({title:document.title,url:u}).catch(()=>{}):navigator.clipboard.writeText(u);
