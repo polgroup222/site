@@ -1,0 +1,56 @@
+{
+ "video": "master.mp4",
+ "_note": "Мастер з VN 27.11: 88.7 с, 1080p60 HEVC HLG. Ім'я в книзі: стоп-кадр 33.0-36.5. Портрет 45.45-57.95 (полотно бежеве, без хромакею). Файл master.mp4 кладеться поруч з цим json (або шлях у MASTER_VIDEO).",
+ "book": {
+  "t0": 32.95,
+  "t1": 36.62,
+  "write_at": 33.35,
+  "write_dur": 1.3,
+  "page_quad": [
+   [
+    1085,
+    372
+   ],
+   [
+    1540,
+    466
+   ],
+   [
+    1255,
+    838
+   ],
+   [
+    702,
+    720
+   ]
+  ],
+  "text_box_uv": [
+   0.1,
+   0.3,
+   0.9,
+   0.62
+  ],
+  "font": "fonts/GreatVibes-Regular.ttf",
+  "ink_color": "#9a6a18",
+  "glow_color": "#ffd27a",
+  "glow_opacity": 0.45
+ },
+ "photo": {
+  "mode": "canvas",
+  "t0": 45.45,
+  "t1": 57.95,
+  "t_ref": 50.0,
+  "rect": [
+   1155,
+   225,
+   1428,
+   646
+  ],
+  "zoom_from": 57.3
+ },
+ "output": {
+  "crf": 16,
+  "preset": "slow",
+  "audio_bitrate": "256k"
+ }
+}
