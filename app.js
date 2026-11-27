@@ -3,7 +3,7 @@
 (function () {
 const T = {
 'sr-Latn': {
-  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', navMy: 'Moja porudžbina', langLabel: 'Jezik', cta: 'Napravi čestitku',
+  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', navMy: 'Moja porudžbina', langLabel: 'Jezik', soundOn: '🔈 Uključi zvuk', soundOff: '🔇 Isključi zvuk', cta: 'Napravi čestitku',
   edition: 'Novogodišnje izdanje',
   heroTitle: 'Novogodišnja bajka za vaše dete',
   heroLead: 'Uronite u novogodišnju čestitku od Deda Mraza: sa osmehom će pozvati vaše dete po imenu, zlatnim slovima ga upisati u svoju čarobnu knjigu i okačiti njegovu fotografiju na zid svoje kućice.',
@@ -30,7 +30,7 @@ const T = {
   foot: 'Mali film za veliko verovanje.', footContact: 'Kontakt', footLegal: 'Pravila', privacy: 'Privatnost',
 },
 uk: {
-  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', navMy: 'Моє замовлення', langLabel: 'Мова', cta: 'Створити привітання',
+  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', navMy: 'Моє замовлення', langLabel: 'Мова', soundOn: '🔈 Увімкнути звук', soundOff: '🔇 Вимкнути звук', cta: 'Створити привітання',
   edition: 'Новорічний випуск',
   heroTitle: 'Новорічна казка для вашої дитини',
   heroLead: 'Пориньте в новорічне привітання від Діда Мороза: він з усмішкою покличе вашу дитину на ім’я, золотими літерами впише його у свою чарівну книгу й повісить її фото на стіні своєї хатинки.',
@@ -169,4 +169,21 @@ if ('IntersectionObserver' in window) {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 }
+// головне відео: два ролики по черзі без кінця, оригінальна якість (файли з /media)
+(() => {
+  const vids = [...document.querySelectorAll('.stage-vid')], snd = document.querySelector('#sound');
+  if (vids.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let cur = 0, ready = 0;
+  const show = (i) => { vids.forEach((v, k) => v.classList.toggle('on', k === i)); };
+  vids.forEach((v, i) => {
+    v.hidden = false;
+    v.addEventListener('error', () => { vids.forEach(x => x.remove()); snd && snd.remove(); }, { once: true });   // нема файлів: лишається фото
+    v.addEventListener('ended', () => { const n = vids[(i + 1) % vids.length]; n.currentTime = 0; n.muted = v.muted; n.play().catch(() => {}); cur = (i + 1) % vids.length; show(cur); });
+  });
+  vids[0].addEventListener('playing', () => { show(cur); if (snd) snd.hidden = false; }, { once: true });
+  vids[0].play().catch(() => {});
+  if (snd) snd.addEventListener('click', () => { const on = vids[cur].muted; vids.forEach(v => { v.muted = !on; }); snd.setAttribute('aria-pressed', String(on));
+    snd.dataset.i = on ? 'soundOff' : 'soundOn'; snd.textContent = t()[snd.dataset.i]; if (on) vids[cur].play().catch(() => {}); });
 })();
+})();
+
