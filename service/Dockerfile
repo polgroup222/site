@@ -1,6 +1,6 @@
 FROM node:22-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ffmpeg imagemagick python3 python3-numpy python3-opencv python3-scipy python3-pil libheif-examples ca-certificates \
+      ffmpeg imagemagick python3 python3-numpy python3-opencv opencv-data python3-scipy python3-pil libheif-examples ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . .

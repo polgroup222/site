@@ -16,7 +16,9 @@ img = ImageOps.exif_transpose(Image.open(path)).convert('RGB')
 w, h = img.size
 if min(w, h) < MIN_SIDE: reasons.append('photo_too_small')
 arr = np.array(img); gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-casc = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+_hc = getattr(getattr(cv2, 'data', None), 'haarcascades', None) or next((d for d in ('/usr/share/opencv4/haarcascades/', '/usr/share/opencv/haarcascades/') if os.path.isdir(d)), '')
+casc = cv2.CascadeClassifier(_hc + 'haarcascade_frontalface_default.xml')
+if casc.empty(): sys.exit('haarcascade_frontalface_default.xml not found (apt install opencv-data)')
 scale = 1000 / max(w, h) if max(w, h) > 1000 else 1.0
 small = cv2.resize(gray, (int(w * scale), int(h * scale))) if scale != 1 else gray
 faces = casc.detectMultiScale(small, scaleFactor=1.1, minNeighbors=6, minSize=(40, 40))
