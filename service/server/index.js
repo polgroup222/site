@@ -106,11 +106,6 @@ async function tick() {
       outDir: path.join(odir(o.id), 'out'), allowSpend: true, voiceFile: o.voiceFile });
     o.result = { status: r.status, reviewReasons: r.reviewReasons, renderSeconds: r.renderSeconds, voice: r.voice };
     o.video = 'out/video.mp4';
-    // легка копія для клієнта: ~50–60 МБ, H.264 High, faststart (відтворюється одразу на телефоні)
-    const src = path.join(odir(o.id), o.video), web = path.join(odir(o.id), 'out', 'web.mp4');
-    const enc = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-maxrate', '5M', '-bufsize', '10M',
-      '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', web]);
-    if (enc.status === 0) { o.web = 'out/web.mp4'; o.webMB = Math.round(fs.statSync(web).size / 1e5) / 10; } else log(o, 'web-копія: помилка ' + String(enc.stderr).slice(0, 200));
     // проміжні великі файли не тримаємо
     for (const f of ['portrait_overlay.mkv']) fs.rmSync(path.join(odir(o.id), 'out', f), { force: true });
     if (r.status === 'done' && AUTO_SEND) { o.status = 'sent'; await emailCustomer(o); }
@@ -196,7 +191,7 @@ document.getElementById('copy').onclick=e=>navigator.clipboard.writeText(u).then
 }
 function adminPage() {
   const rows = listOrders().slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(o.status)}</span> <span class="muted">${esc(o.email)} · ${esc(o.createdAt)} · ${esc(o.id)}</span>
-${o.webMB ? `<span class="muted">клієнту: ${o.webMB} МБ</span>` : ""}${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${esc(o.result.reviewReasons.join(', '))}</p>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
+${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${esc(o.result.reviewReasons.join(', '))}</p>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
 ${o.video && fs.existsSync(path.join(odir(o.id), o.video)) ? `<video controls preload="none" src="/admin/v/${o.id}.mp4"></video>` : ''}
 <p>${['awaiting_payment'].includes(o.status) ? btn(o, 'paid', 'Оплачено → у чергу') : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
 ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Перерендерити') : ''}${o.status !== 'rejected' ? btn(o, 'reject', 'Скасувати') : ''}
@@ -254,7 +249,7 @@ const server = http.createServer(async (req, res) => {
       if (!mm[3]) return send(res, 200, customerPage(o));
       if (o.status !== 'sent') return send(res, 404, { error: 'not_ready' });
       if (o.videoPurged) return send(res, 410, { error: 'expired' });
-      return streamFile(req, res, path.join(odir(o.id), o.web || o.video), u.searchParams.has('dl'));
+      return streamFile(req, res, path.join(odir(o.id), o.video), u.searchParams.has('dl'));   // завжди оригінал, без перестиснення
     }
 
     // адмінка
@@ -272,7 +267,7 @@ const server = http.createServer(async (req, res) => {
         const act = mm[2];
         if (act === 'paid') { o.status = 'queued'; o.paidAt = new Date().toISOString(); }
         if (act === 'approve') { o.status = 'sent'; o.sentAt = new Date().toISOString(); await emailCustomer(o); }
-        if (act === 'rerender') { o.status = 'queued'; o.attempts = 0; delete o.error; delete o.web; }
+        if (act === 'rerender') { o.status = 'queued'; o.attempts = 0; delete o.error; }
         if (act === 'reject') o.status = 'rejected';
         log(o, 'адмін: ' + act); save(o); setImmediate(tick);
         return send(res, 303, '', { Location: '/admin' });
