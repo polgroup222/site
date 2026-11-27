@@ -3,5 +3,19 @@
   request_body {
     max_size 20MB
   }
-  reverse_proxy app:8080
+  # сервіс замовлень
+  @app path /api/* /o/* /admin /admin/* /health
+  handle @app {
+    reverse_proxy app:8080
+  }
+  # сайт: лише явно дозволені файли з кореня репозиторію (service/, .env і .git не віддаються)
+  @site path / /index.html /privacy.html /app.js /style.css /fonts/* /img/*
+  handle @site {
+    root * /srv/site
+    header Cache-Control "public, max-age=300"
+    file_server
+  }
+  handle {
+    respond 404
+  }
 }

@@ -13,6 +13,12 @@ services:
       - DOMAIN=${DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../index.html:/srv/site/index.html:ro
+      - ../privacy.html:/srv/site/privacy.html:ro
+      - ../app.js:/srv/site/app.js:ro
+      - ../style.css:/srv/site/style.css:ro
+      - ../fonts:/srv/site/fonts:ro
+      - ../img:/srv/site/img:ro
       - caddy_data:/data
 volumes:
   caddy_data:
