@@ -169,21 +169,25 @@ if ('IntersectionObserver' in window) {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 }
-// головне відео: два ролики по черзі без кінця, оригінальна якість (файли з /media)
+// головне відео: два ролики по черзі без кінця, оригінальна якість (файли з /media).
+// Спершу повністю завантажуємо обидва файли (поки видно фото), тоді граємо: без підвисань посеред ролика.
 (() => {
   const vids = [...document.querySelectorAll('.stage-vid')], snd = document.querySelector('#sound');
-  if (vids.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  let cur = 0, ready = 0;
+  const c = navigator.connection || {};
+  if (vids.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches || c.saveData || /(^|-)2g|3g/.test(c.effectiveType || '')) return;
+  let cur = 0;
   const show = (i) => { vids.forEach((v, k) => v.classList.toggle('on', k === i)); };
-  vids.forEach((v, i) => {
-    v.hidden = false;
-    v.addEventListener('error', () => { vids.forEach(x => x.remove()); snd && snd.remove(); }, { once: true });   // нема файлів: лишається фото
-    v.addEventListener('ended', () => { const n = vids[(i + 1) % vids.length]; n.currentTime = 0; n.muted = v.muted; n.play().catch(() => {}); cur = (i + 1) % vids.length; show(cur); });
-  });
-  vids[0].addEventListener('playing', () => { show(cur); if (snd) snd.hidden = false; }, { once: true });
-  vids[0].play().catch(() => {});
+  const load = (v) => fetch(v.dataset.src).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(b => new Promise((ok, no) => { v.src = URL.createObjectURL(b); v.addEventListener('canplaythrough', ok, { once: true }); v.addEventListener('error', no, { once: true }); v.load(); }));
+  load(vids[0]).then(() => load(vids[1])).then(() => {
+    vids.forEach((v, i) => {
+      v.hidden = false;
+      v.addEventListener('ended', () => { const n = vids[(i + 1) % vids.length]; n.currentTime = 0; n.muted = v.muted; n.play().catch(() => {}); cur = (i + 1) % vids.length; show(cur); });
+    });
+    vids[0].addEventListener('playing', () => { show(0); if (snd) snd.hidden = false; }, { once: true });
+    vids[0].play().catch(() => {});
+  }).catch(() => { vids.forEach(x => x.remove()); snd && snd.remove(); });   // не вдалося: лишається фото
   if (snd) snd.addEventListener('click', () => { const on = vids[cur].muted; vids.forEach(v => { v.muted = !on; }); snd.setAttribute('aria-pressed', String(on));
     snd.dataset.i = on ? 'soundOff' : 'soundOn'; snd.textContent = t()[snd.dataset.i]; if (on) vids[cur].play().catch(() => {}); });
-})();
-})();
+})();})();
 

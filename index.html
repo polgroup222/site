@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#10251d">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' https:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="order-api" content="https://80-209-231-113.sslip.io">
 <title>Čestitam: novogodišnja bajka za vaše dete</title>
 <meta name="description" content="Novogodišnja bajka za vaše dete: Deda Mraz ga sa osmehom poziva po imenu, upisuje u čarobnu knjigu i kači njegovu fotografiju na zid svoje kućice.">
@@ -25,8 +25,8 @@
 <!-- 1. Deda Mraz kao veliki fon -->
 <section class="stage" aria-label="Deda Mraz">
   <img class="stage-img" src="img/deda-hero.webp" width="1456" height="823" alt="" fetchpriority="high">
-  <video class="stage-img stage-vid" muted playsinline preload="auto" poster="img/deda-hero.webp" src="media/hero-1.mp4" aria-hidden="true" hidden></video>
-  <video class="stage-img stage-vid" muted playsinline preload="auto" src="media/hero-2a.mp4" aria-hidden="true" hidden></video>
+  <video class="stage-img stage-vid" muted playsinline preload="none" poster="img/deda-hero.webp" data-src="media/hero-1.mp4" aria-hidden="true" hidden></video>
+  <video class="stage-img stage-vid" muted playsinline preload="none" data-src="media/hero-2a.mp4" aria-hidden="true" hidden></video>
   <button class="sound" id="sound" type="button" aria-pressed="false" data-i="soundOn" hidden>🔈 Uključi zvuk</button>
   <div class="snowfall" aria-hidden="true"></div>
   <span class="pill stage-pill" data-i="edition">Novogodišnje izdanje</span>
