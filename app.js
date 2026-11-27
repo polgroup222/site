@@ -1,16 +1,159 @@
-const translations={
-uk:{announcement:'Маленьке диво, створене спеціально для вашої дитини ✦',brand:'Зимова<br>пошта',navHow:'Як це працює',navCharacters:'Герої',navFaq:'Запитання',order:'Створити привітання',heroEyebrow:'ДИВО ПОЧИНАЄТЬСЯ З ІМЕНІ',heroTitle:'Коли казка<br><em>знає ім’я</em><br>вашої дитини',heroText:'Особисте відеопривітання від улюбленого зимового героя — для очей, що світяться від дива.',heroCta:'Створити привітання',heroLink:'Як це працює <span>↗</span>',heroNote:'З любов’ю до маленьких деталей',stamp:'СТВОРЕНО<br>ДЛЯ ДИВА',heroBottom:'НЕЗАБУТНЯ МИТЬ ДЛЯ ВСІЄЇ РОДИНИ',introKicker:'ЛИСТ ІЗ КРАЇНИ ДИВ',introTitle:'Спогади, які<br><em>залишаються</em>',introText:'Уявіть: дитина вмикає відео, а святковий герой звертається саме до неї. Називає на ім’я, знає її вік і передає теплі слова від найдорожчих людей.',introLink:'Подарувати цю мить <span>↗</span>',step1Title:'Знайдіть свого героя',step1Text:'Оберіть, хто саме завітає до вашої родини з привітанням.',step2Title:'Додайте особисте',step2Text:'Ім’я, вік і кілька теплих слів допоможуть створити особливу історію.',step3Title:'Отримайте диво',step3Text:'Ми перевіримо кожне відео, а ви зможете переглянути його на сайті.',charactersKicker:'ДВА ГЕРОЇ. БЕЗЛІЧ УСМІШОК.',charactersTitle:'Хто принесе <em>диво?</em>',charactersText:'Оберіть героя, якого з нетерпінням чекають у вашій родині.',characterLabel:'ОСОБЛИВЕ ПРИВІТАННЯ ВІД',santa:'Діда Мороза',santaShort:'Дід Мороз',santaText:'Трохи зимової магії та багато радісного очікування.',nicholas:'Святого Миколая',nicholasShort:'Святий Миколай',nicholasText:'Щирі слова, тепло і віра в маленькі дива.',choose:'Обрати героя',conceptNote:'Образи героїв та приклади відео з’являться після підготовки матеріалів.',quoteKicker:'ДЛЯ МОМЕНТІВ, ЯКІ ХОЧЕТЬСЯ ЗБЕРЕГТИ',quote:'«Найбільше диво — бачити,<br>як дитина <em>вірить у нього.</em>»',orderKicker:'ВАША ІСТОРІЯ ПОЧИНАЄТЬСЯ ТУТ',orderTitle:'Створімо<br><em>дещо особливе</em>',orderText:'Розкажіть нам трішки про дитину. Решту ми підготуємо з турботою про кожну деталь.',promise:'Кожне відео перед відправленням перевіряє менеджер.',formKicker:'ВАШЕ ПРИВІТАННЯ',formTitle:'Трішки про майбутнє диво',demo:'Демонстраційна форма: замовлення поки не надсилаються, оплата не підключена.',formCharacter:'Оберіть героя',childrenCount:'Для скількох дітей?',wishes:'Побажання від батьків',optional:'необов’язково',wishesPlaceholder:'Що важливо сказати дитині?',email:'Ваш email',review:'Переглянути замовлення',formFoot:'На наступному кроці ви зможете перевірити введені дані.',faqKicker:'МИ ПОРУЧ',faqTitle:'Відповіді на<br><em>ваші запитання</em>',q1:'Коли я отримаю відео?',a1:'Ми прагнемо підготувати його якомога швидше. Точний термін буде зазначено перед оформленням замовлення.',q2:'Чи можна замовити відео для кількох дітей?',a2:'Так, у формі можна обрати привітання для однієї, двох або трьох дітей.',q3:'Що робити, якщо у відео є помилка?',a3:'Зверніться до підтримки: помилку з нашого боку ми виправимо. Додаткові побажання можуть потребувати доплати; умови будуть показані до оплати.',q4:'Як я отримаю готове відео?',a4:'Плануємо надати можливість переглянути готове привітання на сайті. Деталі отримання будуть доступні після запуску сервісу.',footerText:'Трохи магії для найдорожчих.',child:'Дитина',name:'Ім’я',age:'Вік',reviewHeading:'Перевірте дані',reviewNotice:'Це лише попередній перегляд. Дані не надсилаються, оплата недоступна.',steps:['ОБЕРІТЬ','РОЗКАЖІТЬ','ЗДИВУЙТЕ']},
-'sr-Latn':{announcement:'Malo čudo, stvoreno baš za vaše dete ✦',brand:'Zimska<br>pošta',navHow:'Kako funkcioniše',navCharacters:'Junaci',navFaq:'Pitanja',order:'Napravi čestitku',heroEyebrow:'ČUDO POČINJE IMENOM',heroTitle:'Kada bajka<br><em>zna ime</em><br>vašeg deteta',heroText:'Lična video-čestitka omiljenog zimskog junaka — za oči koje sijaju od čuđenja.',heroCta:'Napravi čestitku',heroLink:'Kako funkcioniše <span>↗</span>',heroNote:'S ljubavlju prema malim detaljima',stamp:'STVORENO<br>ZA ČUDO',heroBottom:'NEZABORAVAN TRENUTAK ZA CELU PORODICU',introKicker:'PISMO IZ ZEMLJE ČUDA',introTitle:'Uspomene koje<br><em>ostaju</em>',introText:'Zamislite: vaše dete pusti video, a praznični junak obraća se baš njemu. Izgovara njegovo ime, zna koliko ima godina i prenosi tople reči najbližih.',introLink:'Poklonite ovaj trenutak <span>↗</span>',step1Title:'Pronađite svog junaka',step1Text:'Izaberite ko će vašoj porodici doneti čestitku.',step2Title:'Dodajte lični pečat',step2Text:'Ime, godine i nekoliko toplih reči stvaraju posebnu priču.',step3Title:'Dočekajte čudo',step3Text:'Svaki video ćemo proveriti, a vi ćete moći da ga pogledate na sajtu.',charactersKicker:'DVA JUNAKA. BEZBROJ OSMEHA.',charactersTitle:'Ko donosi <em>čudo?</em>',charactersText:'Izaberite junaka koga vaša porodica s nestrpljenjem očekuje.',characterLabel:'POSEBNA ČESTITKA OD',santa:'Deda Mraza',santaShort:'Deda Mraz',santaText:'Malo zimske čarolije i mnogo radosnog iščekivanja.',nicholas:'Svetog Nikole',nicholasShort:'Sveti Nikola',nicholasText:'Iskrene reči, toplina i vera u mala čuda.',choose:'Izaberi junaka',conceptNote:'Izgled junaka i primeri videa biće dostupni nakon pripreme materijala.',quoteKicker:'ZA TRENUTKE KOJE ŽELIMO DA SAČUVAMO',quote:'„Najveće čudo je videti<br>kako dete <em>veruje u njega.</em>“',orderKicker:'VAŠA PRIČA POČINJE OVDE',orderTitle:'Stvorimo<br><em>nešto posebno</em>',orderText:'Recite nam nešto o detetu. Za ostalo ćemo se pobrinuti s pažnjom prema svakom detalju.',promise:'Menadžer pregleda svaki video pre slanja.',formKicker:'VAŠA ČESTITKA',formTitle:'Malo o budućem čudu',demo:'Demonstracioni obrazac: porudžbine se još ne šalju, plaćanje nije povezano.',formCharacter:'Izaberite junaka',childrenCount:'Za koliko dece?',wishes:'Želje roditelja',optional:'opciono',wishesPlaceholder:'Šta je važno reći detetu?',email:'Vaš email',review:'Pregledaj porudžbinu',formFoot:'U sledećem koraku možete proveriti unete podatke.',faqKicker:'TU SMO ZA VAS',faqTitle:'Odgovori na<br><em>vaša pitanja</em>',q1:'Kada ću dobiti video?',a1:'Trudimo se da ga pripremimo što pre. Tačan rok biće naveden pre poručivanja.',q2:'Mogu li da naručim video za više dece?',a2:'Da, u obrascu možete izabrati čestitku za jedno, dvoje ili troje dece.',q3:'Šta ako postoji greška u videu?',a3:'Obratite se podršci: ispravićemo grešku sa naše strane. Dodatne želje mogu zahtevati doplatu; uslovi će biti prikazani pre plaćanja.',q4:'Kako dobijam gotov video?',a4:'Planiramo da omogućimo gledanje čestitke na sajtu. Detalji će biti dostupni nakon pokretanja usluge.',footerText:'Malo čarolije za one koje najviše volimo.',child:'Dete',name:'Ime',age:'Godine',reviewHeading:'Proverite podatke',reviewNotice:'Ovo je samo pregled. Podaci se ne šalju, a plaćanje nije dostupno.',steps:['IZABERITE','ISPRIČAJTE','IZNENADITE']}
+'use strict';
+// Zimska pošta: jezik, živi pregled imena u knjizi, porudžbina (ime + fotografija + email -> server).
+(function () {
+const T = {
+'sr-Latn': {
+  skip: 'Pređi na porudžbinu', brand: 'Zimska pošta', navFilm: 'Šta dete vidi', navHow: 'Kako radi', navFaq: 'Pitanja', langLabel: 'Jezik', cta: 'Napravi čestitku',
+  heroTitle: 'Deda Mraz zna kako se zove vaše dete',
+  heroLead: 'Video od minut i po u kom Deda Mraz izgovara ime deteta, upisuje ga zlatnim slovima u čarobnu knjigu i kači njegovu fotografiju na zid svoje kuće.',
+  tryLabel: 'Upišite ime i pogledajte knjigu', heroLink: 'Pogledaj kadrove iz filma', bookCaption: 'Ovako će ime izgledati u knjizi, 33. sekunda filma',
+  filmTitle: 'Šta će dete videti', filmLead: 'Isti topao film za svako dete, a ime, glas i fotografija su samo njegovi.',
+  f1: 'Kuća Deda Mraza pod polarnom svetlošću', f2: 'Deda Mraz se javlja detetu iz svoje sobe', f3: 'Otvara se čarobna knjiga dobre dece', f4: 'Deda Mraz izgovara ime, a ono se ispisuje u knjizi',
+  f5: 'Fotografija deteta u ramu na zidu', f6: 'Radionica igračaka', f7: 'Irvasi se spremaju za put', legend: 'Kadrovi koji se prave posebno za vaše dete',
+  howTitle: 'Kako radi', s1t: 'Pošaljite ime i fotografiju', s1p: 'Dovoljna je jedna jasna fotografija lica, snimljena telefonom.',
+  s2t: 'Mi pravimo film', s2p: 'Glas Deda Mraza izgovara ime, a mi pregledamo svaki video pre slanja.', s3t: 'Dobijate link', s3p: 'Gledate na telefonu ili TV-u i preuzimate u Full HD kvalitetu.',
+  orderArt: 'Deda Mraz se oprašta sa detetom na kraju filma.', orderTitle: 'Napravite čestitku',
+  fName: 'Ime deteta', fNameHint: 'Kako ga zovete kod kuće, na latinici. Na primer: Milica, Luka, Đorđe.',
+  fPhoto: 'Fotografija deteta', fPhotoBtn: 'Izaberite fotografiju', fPhotoChange: 'Promeni fotografiju',
+  fPhotoHint: 'Lice izbliza, gleda u kameru, dobro osvetljeno. Bez naočara za sunce i bez drugih ljudi na slici.',
+  fEmail: 'Vaš email', fEmailHint: 'Na ovu adresu šaljemo link do gotovog videa.',
+  consent: 'Roditelj sam ili staratelj i slažem se sa <a href="privacy.html">pravilima privatnosti</a>.',
+  send: 'Pošalji porudžbinu', sending: 'Šaljemo…', payNote: 'Posle porudžbine javljamo vam se sa uputstvom za plaćanje. Izrada počinje čim stigne uplata.',
+  ok: 'Porudžbina je primljena. Status i gotov video su na vašoj stranici:', open: 'Otvori stranicu porudžbine',
+  eName: 'Upišite ime deteta latinicom.', ePhoto: 'Dodajte fotografiju (JPG, PNG ili HEIC, do 30 MB).', eEmail: 'Proverite email adresu.', eConsent: 'Potvrdite saglasnost sa pravilima privatnosti.',
+  eMany: 'Previše pokušaja. Pokušajte ponovo za 10 minuta.', eNet: 'Porudžbina nije poslata. Proverite internet i pokušajte ponovo.', eOff: 'Porudžbine trenutno nisu otvorene.',
+  faqTitle: 'Pitanja', q1: 'Koliko se čeka na video?', a1: 'Obično 15 do 30 minuta posle uplate. U danima pred Novu godinu može potrajati do nekoliko sati.',
+  q2: 'Šta ako ime deteta nije uobičajeno?', a2: 'Svako ime proveravamo ručno pre slanja. Ako izgovor nije dobar, ispravićemo ga ili ćemo vam se javiti.',
+  q3: 'Koja fotografija je najbolja?', a3: 'Portret izbliza na kom lice zauzima veći deo slike. Fotografija iz daljine ispadne mutna u ramu.',
+  q4: 'Šta radite sa fotografijom?', a4: 'Koristimo je samo za vaš video. Fotografiju brišemo 30 dana posle slanja, a video posle 60 dana.',
+  q5: 'Na kom jeziku govori Deda Mraz?', a5: 'Na srpskom. Ime izgovara u vokativu, kako se dete i doziva: Milice, Luka, Đorđe.',
+  foot: 'Zimska pošta. Mali film za veliko verovanje.', privacy: 'Privatnost',
+},
+uk: {
+  skip: 'Перейти до замовлення', brand: 'Зимова пошта', navFilm: 'Що побачить дитина', navHow: 'Як це працює', navFaq: 'Запитання', langLabel: 'Мова', cta: 'Створити привітання',
+  heroTitle: 'Дід Мороз знає, як звати вашу дитину',
+  heroLead: 'Відео на півтори хвилини, у якому Дід Мороз вимовляє ім’я дитини, вписує його золотими літерами в чарівну книгу і вішає її фото на стіну свого будиночка.',
+  tryLabel: 'Впишіть ім’я латиницею і подивіться на книгу', heroLink: 'Подивитися кадри з фільму', bookCaption: 'Так ім’я виглядатиме в книзі, 33-тя секунда фільму',
+  filmTitle: 'Що побачить дитина', filmLead: 'Один теплий фільм для кожної дитини, але ім’я, голос і фото в ньому тільки її.',
+  f1: 'Будиночок Діда Мороза під полярним сяйвом', f2: 'Дід Мороз звертається до дитини зі своєї кімнати', f3: 'Відкривається чарівна книга чемних дітей', f4: 'Дід Мороз вимовляє ім’я, і воно з’являється в книзі',
+  f5: 'Фото дитини в рамці на стіні', f6: 'Майстерня іграшок', f7: 'Олені готуються в дорогу', legend: 'Кадри, які створюються саме для вашої дитини',
+  howTitle: 'Як це працює', s1t: 'Надішліть ім’я і фото', s1p: 'Достатньо одного чіткого фото обличчя, знятого на телефон.',
+  s2t: 'Ми створюємо фільм', s2p: 'Голос Діда Мороза вимовляє ім’я, а ми переглядаємо кожне відео перед відправкою.', s3t: 'Ви отримуєте посилання', s3p: 'Дивіться на телефоні чи телевізорі й завантажуйте у Full HD.',
+  orderArt: 'Дід Мороз прощається з дитиною наприкінці фільму.', orderTitle: 'Створіть привітання',
+  fName: 'Ім’я дитини', fNameHint: 'Латиницею, як кличете вдома. Дід Мороз говорить сербською: Milica, Luka, Đorđe.',
+  fPhoto: 'Фото дитини', fPhotoBtn: 'Обрати фото', fPhotoChange: 'Змінити фото',
+  fPhotoHint: 'Обличчя крупним планом, дивиться в камеру, гарне світло. Без сонцезахисних окулярів та інших людей у кадрі.',
+  fEmail: 'Ваш email', fEmailHint: 'На цю адресу надішлемо посилання на готове відео.',
+  consent: 'Я батько, мати чи опікун і погоджуюся з <a href="privacy.html">правилами конфіденційності</a>.',
+  send: 'Надіслати замовлення', sending: 'Надсилаємо…', payNote: 'Після замовлення ми надішлемо інструкцію з оплати. Створення починається одразу після оплати.',
+  ok: 'Замовлення прийнято. Статус і готове відео будуть на вашій сторінці:', open: 'Відкрити сторінку замовлення',
+  eName: 'Впишіть ім’я дитини латиницею.', ePhoto: 'Додайте фото (JPG, PNG або HEIC, до 30 МБ).', eEmail: 'Перевірте адресу email.', eConsent: 'Підтвердьте згоду з правилами конфіденційності.',
+  eMany: 'Забагато спроб. Спробуйте ще раз за 10 хвилин.', eNet: 'Замовлення не надіслано. Перевірте інтернет і спробуйте ще раз.', eOff: 'Замовлення зараз не приймаються.',
+  faqTitle: 'Запитання', q1: 'Скільки чекати на відео?', a1: 'Зазвичай 15–30 хвилин після оплати. Перед Новим роком може знадобитися кілька годин.',
+  q2: 'А якщо ім’я незвичне?', a2: 'Кожне ім’я ми перевіряємо вручну перед відправкою. Якщо вимова не вдалася, виправимо або напишемо вам.',
+  q3: 'Яке фото підійде найкраще?', a3: 'Портрет крупним планом, де обличчя займає більшу частину кадру. Фото здалеку в рамці вийде розмитим.',
+  q4: 'Що ви робите з фото?', a4: 'Використовуємо лише для вашого відео. Фото видаляємо через 30 днів після відправки, відео через 60 днів.',
+  q5: 'Якою мовою говорить Дід Мороз?', a5: 'Сербською. Ім’я він вимовляє в кличному відмінку, як до дитини звертаються: Milice, Luka, Đorđe.',
+  foot: 'Зимова пошта. Маленький фільм для великої віри.', privacy: 'Конфіденційність',
+},
 };
-Object.assign(translations.uk,{variantsKicker:'ОБЕРІТЬ ВАШЕ ПРИВІТАННЯ',variantsTitle:'Для кого<br><em>створимо диво?</em>',variantsIntro:'Оберіть формат — а потім розкажіть нам про дітей. Кожен отримає особисте звернення у спільній історії.',visualCaption:'ВАША ЗИМОВА ІСТОРІЯ',tagOne:'ОДНА ДИТИНА',tagTwo:'ДВОЄ ДІТЕЙ',tagThree:'ТРОЄ ДІТЕЙ',oneTitle:'Особисте диво',twoTitle:'Диво на двох',threeTitle:'Диво для трьох',oneText:'Іменне привітання, створене для однієї маленької людини.',twoText:'Спільна казкова мить для двох дітей в одному відео.',threeText:'Одна святкова історія, у якій знайдеться місце кожному.',benefitName:'Ім’я та вік у привітанні',benefitBoth:'Особисте звернення до кожного',benefitWish:'Теплі слова від батьків',selectVariant:'Обрати цей формат',variantNote:'Ілюстрації показують формат; приклади справжніх відео та ціни з’являться після підготовки.'});
-Object.assign(translations['sr-Latn'],{variantsKicker:'IZABERITE SVOJU ČESTITKU',variantsTitle:'Za koga<br><em>stvaramo čudo?</em>',variantsIntro:'Izaberite format, a zatim nam recite nešto o deci. Svako dobija lično obraćanje u zajedničkoj priči.',visualCaption:'VAŠA ZIMSKA PRIČA',tagOne:'JEDNO DETE',tagTwo:'DVOJE DECE',tagThree:'TROJE DECE',oneTitle:'Lično čudo',twoTitle:'Čudo za dvoje',threeTitle:'Čudo za troje',oneText:'Lična čestitka stvorena za jedno posebno dete.',twoText:'Zajednički čarobni trenutak za dvoje dece u jednom videu.',threeText:'Jedna praznična priča u kojoj ima mesta za svakoga.',benefitName:'Ime i godine u čestitki',benefitBoth:'Lično obraćanje svakom detetu',benefitWish:'Tople reči roditelja',selectVariant:'Izaberi ovaj format',variantNote:'Ilustracije prikazuju format; primeri stvarnih videa i cene biće dostupni nakon pripreme.'});
-// Serbian Latin-to-Cyrillic transliteration, including digraphs.
-function cyr(s){const pairs={'DŽ':'Џ','Dž':'Џ','dž':'џ','LJ':'Љ','Lj':'Љ','lj':'љ','NJ':'Њ','Nj':'Њ','nj':'њ','A':'А','B':'Б','C':'Ц','Č':'Ч','Ć':'Ћ','D':'Д','Đ':'Ђ','E':'Е','F':'Ф','G':'Г','H':'Х','I':'И','J':'Ј','K':'К','L':'Л','M':'М','N':'Н','O':'О','P':'П','R':'Р','S':'С','Š':'Ш','T':'Т','U':'У','V':'В','Z':'З','Ž':'Ж','a':'а','b':'б','c':'ц','č':'ч','ć':'ћ','d':'д','đ':'ђ','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'ј','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','r':'р','s':'с','š':'ш','t':'т','u':'у','v':'в','z':'з','ž':'ж'};return s.replace(/(<[^>]*>)|DŽ|Dž|dž|LJ|Lj|lj|NJ|Nj|nj|[A-Za-zČĆĐŠŽčćđšž]/g,m=>m[0]==='<'?m:(pairs[m]||m));}
-translations['sr-Cyrl']=Object.fromEntries(Object.entries(translations['sr-Latn']).map(([k,v])=>[k,Array.isArray(v)?v.map(cyr):cyr(v)]));
-const selector=document.querySelector('#language');const stored=localStorage.getItem('winter-language');const browser=navigator.language||'';let lang=translations[stored]?stored:(browser.toLowerCase().startsWith('uk')?'uk':'sr-Latn');selector.value=lang;
-function renderLanguage(){const t=translations[lang];document.documentElement.lang=lang;document.querySelectorAll('[data-i]').forEach(el=>{if(t[el.dataset.i]!==undefined)el.innerHTML=t[el.dataset.i]});document.querySelectorAll('[data-placeholder]').forEach(el=>el.placeholder=t[el.dataset.placeholder]);document.querySelectorAll('.step-n').forEach((el,i)=>el.textContent=`0${i+1} / ${t.steps[i]}`);renderChildren();document.querySelector('#review').hidden=true;}
-function renderChildren(){const parent=document.querySelector('#children');const old=[...parent.querySelectorAll('input')].map(x=>x.value);const count=Number(document.querySelector('[name=count]:checked').value);const t=translations[lang];parent.innerHTML=Array.from({length:count},(_,i)=>`<div class="child-row"><label class="field"><span>${t.name} · ${t.child} ${i+1}</span><input name="childName${i}" required maxlength="60" autocomplete="off"></label><label class="field"><span>${t.age}</span><input name="childAge${i}" type="number" min="0" max="18" required></label></div>`).join('');parent.querySelectorAll('input').forEach((x,i)=>x.value=old[i]||'');}
-selector.addEventListener('change',()=>{lang=selector.value;localStorage.setItem('winter-language',lang);renderLanguage()});document.querySelectorAll('[name=count]').forEach(x=>x.addEventListener('change',renderChildren));document.querySelectorAll('[data-character]').forEach(x=>x.addEventListener('click',()=>{document.querySelector(`[name=character][value=${x.dataset.character}]`).checked=true;document.querySelector('#variants').scrollIntoView({behavior:'smooth'})}));
-document.querySelector('#orderForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget),t=translations[lang],children=Array.from({length:Number(f.get('count'))},(_,i)=>`${t.child} ${i+1}: ${f.get('childName'+i)}, ${t.age}: ${f.get('childAge'+i)}`);const box=document.querySelector('#review');box.textContent=[t.reviewHeading,`${t.formCharacter}: ${f.get('character')==='santa'?t.santaShort:t.nicholasShort}`,...children,`${t.wishes}: ${f.get('wishes')||'—'}`,`${t.email}: ${f.get('email')}`,'',t.reviewNotice].join('\n');box.hidden=false;box.scrollIntoView({behavior:'smooth',block:'nearest'})});renderLanguage();
+function cyr(s){const p={'DŽ':'Џ','Dž':'Џ','dž':'џ','LJ':'Љ','Lj':'Љ','lj':'љ','NJ':'Њ','Nj':'Њ','nj':'њ','A':'А','B':'Б','C':'Ц','Č':'Ч','Ć':'Ћ','D':'Д','Đ':'Ђ','E':'Е','F':'Ф','G':'Г','H':'Х','I':'И','J':'Ј','K':'К','L':'Л','M':'М','N':'Н','O':'О','P':'П','R':'Р','S':'С','Š':'Ш','T':'Т','U':'У','V':'В','Z':'З','Ž':'Ж','a':'а','b':'б','c':'ц','č':'ч','ć':'ћ','d':'д','đ':'ђ','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'ј','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','r':'р','s':'с','š':'ш','t':'т','u':'у','v':'в','z':'з','ž':'ж'};
+  return s.replace(/(<[^>]*>)|(\b(?:Full HD|TV|JPG|PNG|HEIC|MB|email)\b)|DŽ|Dž|dž|LJ|Lj|lj|NJ|Nj|nj|[A-Za-zČĆĐŠŽčćđšž]/g,(m,tag,keep)=>tag||keep||(p[m]||m));}
+T['sr-Cyrl'] = Object.fromEntries(Object.entries(T['sr-Latn']).map(([k, v]) => [k, cyr(v)]));
+// imena-primeri ostaju latinicom (tako ih upisujemo)
+for (const k of ['fNameHint', 'a5']) T['sr-Cyrl'][k] = T['sr-Cyrl'][k].replace(/Милица, Лука, Ђорђе|Милице, Лука, Ђорђе/, m => k === 'a5' ? 'Milice, Luka, Đorđe' : 'Milica, Luka, Đorđe');
 
-document.querySelectorAll('.variant-select').forEach(button=>button.addEventListener('click',()=>{document.querySelector(`[name=count][value="${button.dataset.count}"]`).checked=true;renderChildren();document.querySelector('#order').hidden=false;document.querySelectorAll('.variant-card').forEach(card=>card.classList.remove('selected'));button.closest('.variant-card').classList.add('selected');document.querySelector('#order').scrollIntoView({behavior:'smooth'});}));
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+const sel = document.querySelector('#language');
+let lang = store.get('zp-lang');
+if (!T[lang]) lang = (navigator.language || '').toLowerCase().startsWith('uk') ? 'uk' : 'sr-Latn';
+const t = () => T[lang];
+function applyLang() {
+  document.documentElement.lang = lang; sel.value = lang;
+  document.querySelectorAll('[data-i]').forEach(el => { const v = t()[el.dataset.i]; if (v !== undefined) el.innerHTML = v; });
+  const has = document.querySelector('#preview:not([hidden])');
+  document.querySelector('.drop-text').textContent = has ? t().fPhotoChange : t().fPhotoBtn;
+}
+sel.addEventListener('change', () => { lang = sel.value; store.set('zp-lang', lang); applyLang(); });
+applyLang();
+
+// ---------- živo ime u knjizi: projekcija teksta na stranicu (iste koordinate kao u renderu) ----------
+const QUAD = [[1085, 372], [1540, 466], [1255, 838], [702, 720]], UV = [0.1, 0.30, 0.9, 0.62], FW = 1920;
+function solve(A, b) { const n = b.length; for (let i = 0; i < n; i++) { let m = i; for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[m][i])) m = r; [A[i], A[m]] = [A[m], A[i]]; [b[i], b[m]] = [b[m], b[i]];
+  for (let r = i + 1; r < n; r++) { const f = A[r][i] / A[i][i]; for (let c = i; c < n; c++) A[r][c] -= f * A[i][c]; b[r] -= f * b[i]; } }
+  const x = Array(n); for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let c = i + 1; c < n; c++) s -= A[i][c] * x[c]; x[i] = s / A[i][i]; } return x; }
+function homo(src, dst) { const A = [], b = []; for (let i = 0; i < 4; i++) { const [x, y] = src[i], [u, v] = dst[i];
+  A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u); A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v); } const h = solve(A, b); return [...h, 1]; }
+const apply = (h, x, y) => { const w = h[6] * x + h[7] * y + h[8]; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; };
+const book = document.querySelector('#book'), ink = document.querySelector('#ink'), inkText = document.querySelector('#inkText'), tryName = document.querySelector('#tryName');
+function placeInk() {
+  const k = book.clientWidth / FW, page = homo([[0, 0], [1, 0], [1, 1], [0, 1]], QUAD);
+  const box = [[UV[0], UV[1]], [UV[2], UV[1]], [UV[2], UV[3]], [UV[0], UV[3]]].map(([u, v]) => apply(page, u, v).map(c => c * k));
+  const W = 400, H = 100, h = homo([[0, 0], [W, 0], [W, H], [0, H]], box);
+  ink.style.transform = `matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,${h[8]})`;
+  const fit = () => { inkText.style.fontSize = '72px'; const r = Math.min(1.45, (W * 0.92) / inkText.scrollWidth); inkText.style.fontSize = 72 * r + 'px'; };
+  fit();
+}
+let wt;
+function setName(v) {
+  const n = v.replace(/[^A-Za-zČĆĐŠŽčćđšž' -]/g, '').trim(); inkText.textContent = n ? n.charAt(0).toUpperCase() + n.slice(1) : '';
+  placeInk(); clearTimeout(wt); ink.classList.remove('write');
+  wt = setTimeout(() => { void ink.offsetWidth; ink.classList.add('write'); }, 350);
+}
+tryName.addEventListener('input', () => { setName(tryName.value); const f = document.querySelector('#fName'); if (f && !f.dataset.touched) f.value = tryName.value; });
+window.addEventListener('resize', placeInk);
+document.fonts && document.fonts.load('72px "Great Vibes"').then(() => setName(tryName.value));
+setName(tryName.value);
+const fName = document.querySelector('#fName');
+fName.value = tryName.value;
+fName.addEventListener('input', () => { fName.dataset.touched = 1; });
+
+// ---------- fotografija: pregled + smanjenje u pregledaču ----------
+const fPhoto = document.querySelector('#fPhoto'), preview = document.querySelector('#preview');
+fPhoto.addEventListener('change', () => {
+  const f = fPhoto.files[0]; if (!f) return;
+  if (preview.src) URL.revokeObjectURL(preview.src);
+  preview.src = URL.createObjectURL(f); preview.hidden = false; preview.onerror = () => { preview.hidden = true; };
+  document.querySelector('.drop-text').textContent = t().fPhotoChange;
+});
+function shrink(file) {
+  return new Promise((ok, fail) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', 0.9)); };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('photo')); };
+    img.src = url;
+  });
+}
+
+// ---------- slanje ----------
+const api = (document.querySelector('meta[name="order-api"]')?.content || '').replace(/\/$/, '');
+const form = document.querySelector('#orderForm'), out = document.querySelector('#result');
+const say = (msg, err, field) => {
+  out.className = 'result' + (err ? ' err' : ''); out.textContent = msg; out.hidden = false;
+  form.querySelectorAll('[aria-invalid]').forEach(x => x.removeAttribute('aria-invalid'));
+  if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); }
+};
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(form), name = String(f.get('name') || '').trim(), email = String(f.get('email') || '').trim(), file = fPhoto.files[0];
+  if (!/^[A-Za-zČĆĐŠŽčćđšž' -]{2,30}$/.test(name)) return say(t().eName, 1, fName);
+  if (!file || file.size > 30e6) return say(t().ePhoto, 1, fPhoto);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t().eEmail, 1, form.email);
+  if (!form.consent.checked) return say(t().eConsent, 1, form.consent);
+  if (!api) return say(t().eOff, 1);
+  const btn = form.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = t().sending;
+  try {
+    const photo = await shrink(file).catch(() => file.size <= 12e6 ? new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => no(Object.assign(new Error(), { code: 'photo' })); fr.readAsDataURL(file); })
+      : Promise.reject(Object.assign(new Error(), { code: 'photo' })));
+    const r = await fetch(`${api}/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, lang, photo }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const m = { name: [t().eName, fName], photo: [t().ePhoto, fPhoto], email: [t().eEmail, form.email], too_many: [t().eMany] }[j.error] || [t().eNet]; return say(m[0], 1, m[1]); }
+    out.className = 'result'; out.textContent = t().ok + ' '; const a = document.createElement('a'); a.href = j.url; a.textContent = t().open; a.rel = 'noopener'; out.append(a); out.hidden = false;
+    form.reset(); preview.hidden = true; document.querySelector('.drop-text').textContent = t().fPhotoBtn;
+    out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (err) { say(err.code === 'photo' ? t().ePhoto : t().eNet, 1, err.code === 'photo' ? fPhoto : null); }
+  finally { btn.disabled = false; btn.textContent = t().send; }
+});
+})();
