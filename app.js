@@ -5,20 +5,20 @@ const T = {
 'sr-Latn': {
   skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', navMy: 'Moja porudžbina', langLabel: 'Jezik', cta: 'Napravi čestitku',
   edition: 'Novogodišnje izdanje',
-  heroTitle: 'Deda Mraz zna ime vašeg deteta',
-  heroLead: 'Novogodišnji film u kom Deda Mraz izgovara ime deteta, upisuje ga u čarobnu knjigu i kači njegovu fotografiju na zid.',
+  heroTitle: 'Novogodišnja bajka za vaše dete',
+  heroLead: 'Uronite u novogodišnju čestitku od Deda Mraza: sa osmehom će pozvati vaše dete po imenu, zlatnim slovima ga upisati u svoju čarobnu knjigu i okačiti njegovu fotografiju na zid svoje kućice.',
   tryLabel: 'Upišite ime i pogledajte kako izgleda u knjizi',
   peekTitle: 'Malo od onoga što dete čeka', p1: 'Fotografija na zidu', p2: 'Irvasi', p3: 'Radionica igračaka',
   noteBig: 'Ime, glas i fotografija samo vašeg deteta', c1: 'Ime deteta', c2: 'Njegova fotografija', c3: 'Glas Deda Mraza',
   howTitle: 'Kako radi', s1t: 'Pošaljite ime i fotografiju', s1p: 'Dovoljna je jedna jasna fotografija lica, snimljena telefonom.',
-  s2t: 'Mi pravimo film', s2p: 'Glas Deda Mraza izgovara ime, a mi pregledamo svaki video pre slanja.', s3t: 'Dobijate link', s3p: 'Gledate na telefonu ili TV-u i preuzimate u Full HD kvalitetu.',
+  s2t: 'Mi pravimo film', s2p: 'Glas Deda Mraza izgovara ime, a mi pregledamo svaki video pre slanja.', s3t: 'Gledate na sajtu', s3p: 'Video se pojavljuje na stranici vaše porudžbine: gledajte na telefonu ili TV-u i preuzmite ga u Full HD kvalitetu.',
   orderTitle: 'Napravite čestitku',
   fName: 'Ime deteta', fNameHint: 'Kako ga zovete kod kuće, na latinici. Na primer: Milica, Luka, Đorđe.',
   fPhoto: 'Fotografija deteta', fPhotoBtn: 'Izaberite fotografiju', fPhotoChange: 'Promeni fotografiju',
   fPhotoHint: 'Lice izbliza, gleda u kameru, dobro osvetljeno. Bez naočara za sunce i bez drugih ljudi na slici.',
-  fEmail: 'Vaš email', fEmailHint: 'Na ovu adresu šaljemo link do gotovog videa.',
+  fEmail: 'Vaš email (po želji)', fEmailHint: 'Video će biti spreman ovde, na stranici vaše porudžbine. Želite li da vam link stigne i na email? Upišite adresu, i sa njom ćete uvek moći da otvorite porudžbinu.',
   consent: 'Roditelj sam ili staratelj i slažem se sa <a href="privacy.html">pravilima privatnosti</a>.',
-  send: 'Pošalji porudžbinu', sending: 'Šaljemo…', payNote: 'Posle porudžbine javljamo vam se sa uputstvom za plaćanje. Izrada počinje čim stigne uplata.',
+  send: 'Pošalji porudžbinu', sending: 'Šaljemo…', payNote: 'Posle slanja otvara se stranica vaše porudžbine sa plaćanjem. Izrada počinje odmah posle uplate.',
   ok: 'Porudžbina je primljena. Status i gotov video su na vašoj stranici:', open: 'Otvori stranicu porudžbine', noMsg: 'Broj vaše porudžbine:', noKeep: 'Sačuvajte ga: sa njim i emailom uvek možete otvoriti stranicu na „Moja porudžbina“.',
   eName: 'Upišite ime deteta latinicom.', ePhoto: 'Dodajte fotografiju (JPG, PNG ili HEIC, do 30 MB).', eEmail: 'Proverite email adresu.', eConsent: 'Potvrdite saglasnost sa pravilima privatnosti.',
   eMany: 'Previše pokušaja. Pokušajte ponovo za 10 minuta.', eNet: 'Porudžbina nije poslata. Proverite internet i pokušajte ponovo.', eOff: 'Porudžbine trenutno nisu otvorene.',
@@ -32,20 +32,20 @@ const T = {
 uk: {
   skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', navMy: 'Моє замовлення', langLabel: 'Мова', cta: 'Створити привітання',
   edition: 'Новорічний випуск',
-  heroTitle: 'Дід Мороз знає ім’я вашої дитини',
-  heroLead: 'Новорічний фільм, у якому Дід Мороз вимовляє ім’я дитини, вписує його в чарівну книгу і вішає її фото на стіну.',
+  heroTitle: 'Новорічна казка для вашої дитини',
+  heroLead: 'Пориньте в новорічне привітання від Діда Мороза: він з усмішкою покличе вашу дитину на ім’я, золотими літерами впише його у свою чарівну книгу й повісить її фото на стіні своєї хатинки.',
   tryLabel: 'Впишіть ім’я латиницею і подивіться, як воно виглядає в книзі',
   peekTitle: 'Трохи з того, що чекає на дитину', p1: 'Фото на стіні', p2: 'Олені', p3: 'Майстерня іграшок',
   noteBig: 'Ім’я, голос і фото тільки вашої дитини', c1: 'Ім’я дитини', c2: 'Її фото', c3: 'Голос Діда Мороза',
   howTitle: 'Як це працює', s1t: 'Надішліть ім’я і фото', s1p: 'Достатньо одного чіткого фото обличчя, знятого на телефон.',
-  s2t: 'Ми створюємо фільм', s2p: 'Голос Діда Мороза вимовляє ім’я, а ми переглядаємо кожне відео перед відправкою.', s3t: 'Ви отримуєте посилання', s3p: 'Дивіться на телефоні чи телевізорі й завантажуйте у Full HD.',
+  s2t: 'Ми створюємо фільм', s2p: 'Голос Діда Мороза вимовляє ім’я, а ми переглядаємо кожне відео перед відправкою.', s3t: 'Дивитесь на сайті', s3p: 'Відео з’являється на сторінці вашого замовлення: дивіться на телефоні чи телевізорі й завантажуйте у Full HD.',
   orderTitle: 'Створіть привітання',
   fName: 'Ім’я дитини', fNameHint: 'Латиницею, як кличете вдома. Дід Мороз говорить сербською: Milica, Luka, Đorđe.',
   fPhoto: 'Фото дитини', fPhotoBtn: 'Обрати фото', fPhotoChange: 'Змінити фото',
   fPhotoHint: 'Обличчя крупним планом, дивиться в камеру, гарне світло. Без сонцезахисних окулярів та інших людей у кадрі.',
-  fEmail: 'Ваш email', fEmailHint: 'На цю адресу надішлемо посилання на готове відео.',
+  fEmail: 'Ваш email (за бажанням)', fEmailHint: 'Відео буде готове тут, на сторінці вашого замовлення. Бажаєте отримати посилання ще й на пошту? Вкажіть адресу, і з нею ви завжди зможете відкрити замовлення.',
   consent: 'Я батько, мати чи опікун і погоджуюся з <a href="privacy.html">правилами конфіденційності</a>.',
-  send: 'Надіслати замовлення', sending: 'Надсилаємо…', payNote: 'Після замовлення ми надішлемо інструкцію з оплати. Створення починається одразу після оплати.',
+  send: 'Надіслати замовлення', sending: 'Надсилаємо…', payNote: 'Після надсилання відкриється сторінка вашого замовлення з оплатою. Створення починається одразу після оплати.',
   ok: 'Замовлення прийнято. Статус і готове відео будуть на вашій сторінці:', open: 'Відкрити сторінку замовлення', noMsg: 'Номер вашого замовлення:', noKeep: 'Збережіть його: з ним і email ви завжди відкриєте сторінку в розділі «Моє замовлення».',
   eName: 'Впишіть ім’я дитини латиницею.', ePhoto: 'Додайте фото (JPG, PNG або HEIC, до 30 МБ).', eEmail: 'Перевірте адресу email.', eConsent: 'Підтвердьте згоду з правилами конфіденційності.',
   eMany: 'Забагато спроб. Спробуйте ще раз за 10 хвилин.', eNet: 'Замовлення не надіслано. Перевірте інтернет і спробуйте ще раз.', eOff: 'Замовлення зараз не приймаються.',
@@ -142,7 +142,7 @@ form.addEventListener('submit', async (e) => {
   const f = new FormData(form), name = String(f.get('name') || '').trim(), email = String(f.get('email') || '').trim(), file = fPhoto.files[0];
   if (!/^[A-Za-zČĆĐŠŽčćđšž' -]{2,30}$/.test(name)) return say(t().eName, 1, fName);
   if (!file || file.size > 30e6) return say(t().ePhoto, 1, fPhoto);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t().eEmail, 1, form.email);
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t().eEmail, 1, form.email);
   if (!form.consent.checked) return say(t().eConsent, 1, form.consent);
   if (!api) return say(t().eOff, 1);
   const btn = form.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = t().sending;
