@@ -1,0 +1,169 @@
+{
+  "_comment": "Шаблон базового відео. Часи сегментів у секундах відносно ПОЧАТКУ ВИХІДНОГО КЛІПУ; глобальні таймкоди рахує render.js. Шляхи відносні до assets_dir.",
+  "version": 1,
+  "fps": 24,
+  "width": 1920,
+  "height": 1080,
+  "segments": [
+    {
+      "id": "intro_transition",
+      "src": "clips/trans.mp4",
+      "in": 0,
+      "dur": 4.0,
+      "xfade": 0.5
+    },
+    {
+      "id": "intro_speech",
+      "src": "clips/s2b.mp4",
+      "in": 0,
+      "dur": 7.2,
+      "xfade": 0.6,
+      "lipsync": true
+    },
+    {
+      "id": "book_place",
+      "src": "clips/s3a.mp4",
+      "in": 0,
+      "dur": 6.0,
+      "xfade": 0.5
+    },
+    {
+      "id": "book_open",
+      "src": "clips/s3b.mp4",
+      "in": 0,
+      "dur": 8.0,
+      "freeze": 3.4,
+      "xfade": 0.6
+    },
+    {
+      "id": "portrait",
+      "still": "frame_scene/frame_v3.png",
+      "dur": 9.0,
+      "zoom": [
+        1.0,
+        1.1
+      ],
+      "xfade": 0.6
+    },
+    {
+      "id": "wishes_a",
+      "src": "clips/s7a.mp4",
+      "in": 0,
+      "dur": 8.0,
+      "xfade": 0.5,
+      "lipsync": true
+    },
+    {
+      "id": "wishes_b",
+      "src": "clips/s9a.mp4",
+      "in": 0,
+      "dur": 6.0,
+      "xfade": 0.6,
+      "lipsync": true
+    },
+    {
+      "id": "final_reindeer",
+      "src": "clips/s6.mp4",
+      "in": 0,
+      "dur": 3.3,
+      "xfade": 0.5
+    },
+    {
+      "id": "final_wave",
+      "src": "clips/s9b.mp4",
+      "in": 0,
+      "dur": 8.0,
+      "freeze": 1.0,
+      "fade_out": 1.2,
+      "lipsync": true
+    }
+  ],
+  "slots": {
+    "slot1": {
+      "segment": "book_open",
+      "at": 7.6,
+      "max_dur": 3.6
+    },
+    "slot2": {
+      "segment": "final_reindeer",
+      "at": 0.3,
+      "max_dur": 2.9
+    }
+  },
+  "book_name": {
+    "segment": "book_open",
+    "write_at": 8.4,
+    "write_dur": 1.2,
+    "page_quad": [
+      [
+        1085,
+        372
+      ],
+      [
+        1540,
+        466
+      ],
+      [
+        1255,
+        838
+      ],
+      [
+        702,
+        720
+      ]
+    ],
+    "text_box_uv": [
+      0.1,
+      0.28,
+      0.9,
+      0.62
+    ],
+    "font": "fonts/GreatVibes-Regular.ttf",
+    "ink_color": "#8a5a14",
+    "glow_color": "#ffd27a",
+    "glow_opacity": 0.35
+  },
+  "portrait_photo": {
+    "segment": "portrait",
+    "frame_quad": [
+      [
+        1472,
+        400
+      ],
+      [
+        1866,
+        376
+      ],
+      [
+        1866,
+        1018
+      ],
+      [
+        1472,
+        1018
+      ]
+    ],
+    "tint": "#ffb060",
+    "tint_amount": 8,
+    "vignette": true,
+    "_comment": "ЗАГЛУШКА: кути виміряні на прев'ю; перемірити на оригіналі 2720x1536"
+  },
+  "snow": {
+    "src": "fx/snow_loop.mov",
+    "opacity": 0.85
+  },
+  "audio": {
+    "music": "clips/music.mp3",
+    "music_gain_db": -14,
+    "voice_general": "audio/voice_general.wav",
+    "duck_db": 6,
+    "slot_fade_ms": 30,
+    "target_lufs": -16,
+    "true_peak": -1.5
+  },
+  "output": {
+    "crf": 18,
+    "preset": "medium",
+    "audio_bitrate": "192k"
+  }
+}

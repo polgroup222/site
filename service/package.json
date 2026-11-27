@@ -1,0 +1,2 @@
+{ "name": "greeting-service", "version": "0.1.0", "private": true, "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/*.test.js", "voice:estimate": "node src/voice-cli.js" } }

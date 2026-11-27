@@ -1,0 +1,9 @@
+{
+ "video": "master.mp4",
+ "name_voice": {"slot": "slot1", "at": 3.4, "orig_mean_db": -34.8, "max_dur": 3.6},
+ "book": {"t0": 0, "t1": 8, "write_at": 4.0, "write_dur": 1.2,
+   "page_quad": [[1085,372],[1540,466],[1255,838],[702,720]], "text_box_uv": [0.1,0.28,0.9,0.62],
+   "font": "fonts/GreatVibes-Regular.ttf", "ink_color": "#a8741c", "glow_color": "#ffd27a", "glow_opacity": 0.45},
+ "photo": {"t0": 7.75, "t1": 14.0, "rect": [1160,228,264,416], "similarity": 0.08, "blend": 0.04},
+ "output": {"crf": 16, "preset": "slow", "audio_bitrate": "256k"}
+}

@@ -1,0 +1,26 @@
+{
+  "_comment": "Сталі налаштування голосу для ВСІХ генерацій. Не змінювати без потреби: зміна інвалідує кеш.",
+  "model_id": "eleven_v4",
+  "output_format": "mp3_44100_192",
+  "voice_settings": {
+    "stability": 0.5,
+    "similarity_boost": 0.75,
+    "style": 0.0,
+    "use_speaker_boost": true
+  },
+  "seed": 20261126,
+  "slots": {
+    "slot1": {
+      "text": "[excited] Aha, evo! [warmly] {V}! Našao sam tvoje ime!",
+      "previous_text": "",
+      "next_text": ""
+    },
+    "slot2": {
+      "text": "Srećna Nova godina, {V}!",
+      "previous_text": "Slušaj roditelje, veruj u čuda, i čudo će se sigurno dogoditi!",
+      "next_text": "Ho-ho-ho! Vidimo se!"
+    }
+  },
+  "max_chars_per_order": 150,
+  "_model_note": "У веб-інтерфейсі обрано «Eleven v4» (так записано загальний голос 26.11). Точний model_id для API перевірити GET /v1/models перед першим запуском."
+}
