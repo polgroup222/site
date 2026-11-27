@@ -84,6 +84,8 @@ details p{margin:0 0 16px;color:var(--mist);max-width:62ch}
 .stage{position:relative;height:min(100svh,62vw);min-height:520px;overflow:hidden;background:#1a0f08}
 .stage-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
 .stage::after{content:"";position:absolute;inset:0;background:linear-gradient(#0b1a1466,transparent 22%,transparent 70%,#0b1a1433)}
+.stage-vid{opacity:0;transition:opacity .6s ease}.stage-vid.on{opacity:1}
+.sound{position:absolute;right:var(--gut);bottom:clamp(90px,11vw,150px);z-index:3;padding:9px 16px;border-radius:999px;border:1px solid #ffffff40;background:#0b1a14aa;color:var(--snow);font:600 14px var(--sans);cursor:pointer;backdrop-filter:blur(6px)}
 .stage-pill{position:absolute;left:var(--gut);bottom:clamp(90px,11vw,150px);z-index:2}
 .snowfall{position:absolute;inset:-40px 0 0;z-index:1;pointer-events:none;opacity:.85;
   background-image:radial-gradient(2px 2px at 20px 30px,#fff,transparent),radial-gradient(3px 3px at 120px 80px,#fff,transparent),radial-gradient(2px 2px at 200px 160px,#ffffffcc,transparent),radial-gradient(3px 3px at 300px 40px,#fff,transparent),radial-gradient(2px 2px at 360px 220px,#ffffffcc,transparent),radial-gradient(4px 4px at 80px 260px,#ffffffaa,transparent);
