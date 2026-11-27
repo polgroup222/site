@@ -50,9 +50,11 @@ function save(o) {
 }
 const listOrders = () => fs.readdirSync(ORDERS).map(load).filter(Boolean).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 // короткий номер замовлення для клієнта (6 цифр, унікальний): вхід на /porudzbina = email + номер
-function newNo(taken = new Set(listOrders().map(o => o.no))) {
-  let n; do n = String(crypto.randomInt(100000, 1000000)); while (taken.has(n)); taken.add(n); return n;
-}
+// номер замовлення по порядку: CT-00001, CT-00002 … (seq — число, no — те, що бачить клієнт)
+const NO_PREFIX = 'CT-';
+const fmtNo = (n) => NO_PREFIX + String(n).padStart(5, '0');
+let lastSeq = 0;
+function newNo() { lastSeq += 1; return { seq: lastSeq, no: fmtNo(lastSeq) }; }
 // журнал: історія в самому замовленні + загальний файл подій за день (logs/РРРР-ММ-ДД.jsonl), нічого не видаляється
 const LOGS = path.join(DATA, 'logs'); fs.mkdirSync(LOGS, { recursive: true });
 function event(rec) {
@@ -136,7 +138,7 @@ function notify(o, what) {
 let busy = false;
 async function tick() {
   if (busy) return;
-  const o = listOrders().reverse().find(x => x.status === 'queued');
+  const o = listOrders().reverse().find(x => x.status === 'queued' && !x.test);   // тестові замовлення не рендеримо
   if (!o) return;
   busy = true;
   o.status = 'rendering'; o.attempts = (o.attempts || 0) + 1; log(o, 'рендер почато'); save(o);
@@ -156,8 +158,12 @@ async function tick() {
   save(o); busy = false; setImmediate(tick);
 }
 // старим замовленням присвоюємо короткий номер
-{ const taken = new Set(listOrders().map(o => o.no).filter(Boolean));
-  for (const o of listOrders()) if (!o.no) { o.no = newNo(taken); log(o, `присвоєно номер ${o.no}`); save(o); } }
+{ const all = listOrders().reverse();   // від найпершого
+  lastSeq = Math.max(0, ...all.map(o => o.seq || 0));
+  for (const o of all) if (!o.seq) {
+    if (o.no) o.noOld = o.no;   // старий 6-значний номер теж пускає на /porudzbina
+    Object.assign(o, newNo()); log(o, `присвоєно номер ${o.no}`); save(o);
+  } }
 // після перезапуску: незавершені рендери повертаємо в чергу
 for (const o of listOrders()) if (o.status === 'rendering') { o.status = 'queued'; log(o, 'перезапуск сервера'); save(o); }
 setInterval(tick, 5000);
@@ -198,10 +204,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}a{color:var(--
 @media (prefers-reduced-motion:reduce){.flake{animation:none}}
 </style></head><body><main>${inner}</main></body></html>`;
 const CT = {
-  'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano' },
+  'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano', payment_failed: 'Plaćanje nije prošlo' },
     eta: (m) => `Otprilike još ${m} min. Stranica se sama osvežava.`, pay: 'Čim uplata bude potvrđena, počinjemo izradu.', mail: 'Poslaćemo vam i email kada bude spremno.',
     dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: (d) => `Video čuvamo ${d} dana. Preuzmite ga na vreme.`, steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'], no: 'Broj porudžbine' },
-  uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано' },
+  uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' },
     eta: (m) => `Приблизно ще ${m} хв. Сторінка оновлюється сама.`, pay: 'Щойно оплату підтвердимо, почнемо створення.', mail: 'Коли буде готово, ми також надішлемо лист.',
     dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'], no: 'Номер замовлення' },
 };
@@ -213,24 +219,71 @@ function eta(o) {
   const q = listOrders().filter(x => x.status === 'queued').reverse(); const pos = q.findIndex(x => x.id === o.id);
   return (pos + 1 + (busy ? 1 : 0)) * AVG_RENDER_MIN;
 }
-function customerPage(o) {
+Object.assign(CT['sr-Latn'], {
+  formed: 'Porudžbina je spremna za plaćanje', formedP: 'Proverite podatke i platite. Izrada počinje odmah posle uplate.',
+  child: 'Ime deteta', email: 'Email', pay: 'Plati', payManual: 'Javićemo vam se sa uputstvom za plaćanje na ovaj email.',
+  paidH: 'Plaćeno! Predajemo porudžbinu na izradu', makingH: 'Montiramo video za vas', makingP: 'Sačuvajte broj porudžbine i email: sa njima uvek možete otvoriti ovu stranicu na cestitam.eu/porudzbina.',
+  failH: 'Plaćanje nije prošlo', failP: 'Novac nije skinut. Pokušajte ponovo: napravićemo novu porudžbinu sa novim brojem, sa istim imenom i fotografijom.', retry: 'Pokušaj ponovo',
+  copy1: 'Kopiraj', copied1: 'Kopirano', test: 'TEST porudžbina: plaćanje je simulirano, video se ne pravi.' });
+Object.assign(CT.uk, {
+  formed: 'Заявку сформовано, залишилось оплатити', formedP: 'Перевірте дані й оплатіть. Створення починається одразу після оплати.',
+  child: 'Ім’я дитини', email: 'Email', pay: 'Оплатити', payManual: 'Ми надішлемо інструкцію з оплати на цей email.',
+  paidH: 'Оплачено! Передаємо замовлення в роботу', makingH: 'Монтуємо відео для вас', makingP: 'Збережіть номер замовлення та email: з ними ви завжди відкриєте цю сторінку на cestitam.eu/porudzbina.',
+  failH: 'Оплата не пройшла', failP: 'Гроші не списано. Спробуйте ще раз: ми створимо нову заявку з новим номером, з тим самим ім’ям і фото.', retry: 'Спробувати ще раз',
+  copy1: 'Копіювати', copied1: 'Скопійовано', test: 'ТЕСТОВЕ замовлення: оплата імітується, відео не створюється.' });
+const canPay = (o) => o.test || PAYMENT_MODE === 'mock';   // Stripe підключимо тут же: PAYMENT_MODE=stripe
+function customerPage(o, flash = '') {
   const t = CT[o.lang] || CT['sr-Latn'], ready = o.status === 'sent' && !o.videoPurged;
-  const step = { awaiting_payment: 0, queued: 1, rendering: 1, review: 2, sent: 4 }[o.status] ?? 0;
+  const step = { awaiting_payment: 0, payment_failed: 0, queued: 1, rendering: 1, review: 2, sent: 4 }[o.status] ?? 0;
   const m = eta(o), base = `/o/${o.id}/${o.key}`;
   const steps = t.steps.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><span>${i < step ? '✓' : i + 1}</span>${esc(s)}</li>`).join('');
-  const body = ready
-    ? `<video controls playsinline preload="metadata" src="${base}/video.mp4"></video>
+  const row = (label, val, copy) => `<div class="kv"><span class="muted">${esc(label)}</span><b>${esc(val)}</b>${copy ? `<button class="b ghost cp" data-v="${esc(val)}">⧉ ${esc(t.copy1)}</button>` : ''}</div>`;
+  const facts = (copy) => `<div class="facts">${row(t.no, o.no || o.id, copy)}${row(t.email, o.email, copy)}${row(t.child, o.childName)}</div>`;
+  let body;
+  if (ready) body = `<video controls playsinline preload="metadata" src="${base}/video.mp4"></video>
 <div class="actions"><a class="b" href="${base}/video.mp4?dl=1">⬇ ${esc(t.dl)}</a><button class="b ghost" id="share">↗ ${esc(t.share)}</button><button class="b ghost" id="copy">⧉ ${esc(t.copy)}</button></div>
-<p class="muted">${esc(t.keep(KEEP_VIDEO_DAYS))}</p>`
-    : o.videoPurged ? `<p>${esc(t.gone)}</p>`
-    : `<div class="wait"><div class="flake">❄</div><p class="big">${esc(t.st[o.status] || o.status)}</p>${m ? `<p class="muted">${esc(t.eta(m))}</p>` : ''}
-${o.status === 'awaiting_payment' ? `<p class="muted">${esc(t.pay)}</p>` : ''}<p class="muted">${esc(t.mail)}</p></div>`;
-  const live = !ready && !o.videoPurged && !['failed', 'rejected'].includes(o.status);
-  return page('Čestitam', `<header class="top"><span class="logo">✳ Čestitam</span></header>
-<h1><small>${esc(t.title)}</small>${esc(o.childName)}</h1>${o.no ? `<p class="muted">${esc(t.no)}: <b class="tag">${esc(o.no)}</b></p>` : ''}<ol class="steps">${steps}</ol><section class="card">${body}</section>
-${live ? '<script nonce="r">setTimeout(()=>location.reload(),30000)</script>' : ''}
-${ready ? `<script nonce="r">const u=location.href.split('#')[0];document.getElementById('share').onclick=()=>navigator.share?navigator.share({title:document.title,url:u}).catch(()=>{}):navigator.clipboard.writeText(u);
-document.getElementById('copy').onclick=e=>navigator.clipboard.writeText(u).then(()=>{e.target.textContent=${JSON.stringify('✓ ' + t.copied)}});</script>` : ''}`, o.lang);
+<p class="muted">${esc(t.keep(KEEP_VIDEO_DAYS))}</p>`;
+  else if (o.videoPurged) body = `<p>${esc(t.gone)}</p>`;
+  else if (o.status === 'awaiting_payment') body = `<p class="big">${esc(t.formed)}</p><p class="muted">${esc(t.formedP)}</p>${facts(false)}
+${canPay(o) ? `<form method="post" action="${base}/pay"><button class="b wide">${esc(t.pay)}</button></form>` : `<p class="muted">${esc(t.payManual)}</p>`}`;
+  else if (o.status === 'payment_failed') body = `<div class="wait"><div class="flake bad">!</div><p class="big">${esc(t.failH)}</p><p class="muted">${esc(t.failP)}</p></div>
+<form method="post" action="${base}/retry"><button class="b wide red">${esc(t.retry)}</button></form>`;
+  else if (['queued', 'rendering', 'review'].includes(o.status)) body = `<div class="wait"><div class="flake">❄</div>
+${flash === 'paid' ? `<p class="ok">✓ ${esc(t.paidH)}</p>` : ''}<p class="big">${esc(t.makingH)}</p>${m && !o.test ? `<p class="muted">${esc(t.eta(m))}</p>` : ''}</div>
+${facts(true)}<p class="muted">${esc(t.makingP)}</p><p class="muted">${esc(t.mail)}</p>`;
+  else body = `<div class="wait"><p class="big">${esc(t.st[o.status] || o.status)}</p></div>${facts(true)}`;
+  const live = ['queued', 'rendering', 'review'].includes(o.status) && !o.test;
+  return page('Čestitam', `<style>.facts{display:grid;gap:8px;margin:16px 0}.kv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#0e211a}
+.kv span{flex-basis:100%;font-size:13px}.kv b{font-size:19px;letter-spacing:.02em;overflow-wrap:anywhere;flex:1;min-width:0}.kv{row-gap:4px}.kv .b{padding:8px 14px;font-size:14px}.wide{width:100%;justify-content:center;padding:15px;font-size:17px}.red{background:var(--red);color:#fff}
+.ok{color:var(--gold);font-weight:600;margin:0}.flake.bad{animation:none;color:var(--red);font:700 44px/1 Georgia,serif}.testb{border:1px dashed var(--gold);border-radius:12px;padding:8px 12px;color:var(--gold);font-size:14px}form{display:block}</style>
+<header class="top"><a class="logo" href="/" style="text-decoration:none">✳ Čestitam</a></header>
+${o.test ? `<p class="testb">${esc(t.test)}</p>` : ''}
+<h1><small>${esc(t.title)}</small>${esc(o.childName)}</h1><ol class="steps">${steps}</ol><section class="card">${body}</section>
+${live ? '<script nonce="r">setTimeout(()=>location.replace(location.pathname),30000)</script>' : ''}
+<script nonce="r">document.querySelectorAll('.cp').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.v).then(()=>{b.textContent=${JSON.stringify('✓ ' + t.copied1)};setTimeout(()=>b.textContent=${JSON.stringify('⧉ ' + t.copy1)},1800)}));
+${ready ? `const u=location.href.split('#')[0];document.getElementById('share').onclick=()=>navigator.share?navigator.share({title:document.title,url:u}).catch(()=>{}):navigator.clipboard.writeText(u);
+document.getElementById('copy').onclick=e=>navigator.clipboard.writeText(u).then(()=>{e.target.textContent=${JSON.stringify('✓ ' + t.copied)}});` : ''}</script>`, o.lang);
+}
+// тимчасова сторінка оплати для тестових замовлень (до підключення Stripe): успіх або відмова
+function mockCheckout(o) {
+  const base = `/o/${o.id}/${o.key}`;
+  return page('Test checkout', `<header class="top"><span class="logo">Test checkout</span></header><section class="card"><p class="big">${esc(o.no)} · ${esc(o.childName)}</p>
+<p class="muted">Імітація платіжної сторінки (замість Stripe). Оберіть результат:</p>
+<div class="actions"><form method="post" action="${base}/mock/ok"><button class="b">✓ Оплата успішна</button></form><form method="post" action="${base}/mock/fail"><button class="b ghost">✕ Оплата не пройшла</button></form></div></section>`);
+}
+function markPaid(o, info = {}) {
+  o.status = 'queued'; o.paidAt = new Date().toISOString(); if (info.amount) o.amount = info.amount; o.payMethod = info.method || o.payMethod || '';
+  log(o, `оплачено ${o.amount || ''} ${o.payMethod}`.trim()); notify(o, `💰 Оплачено ${o.amount || ''} ${o.payMethod}`); save(o); setImmediate(tick);
+}
+function retryOrder(o) {   // нова заявка з новим номером, те саме ім'я/фото/email; стара лишається як «оплата не пройшла»
+  const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');
+  fs.mkdirSync(odir(id), { recursive: true });
+  if (o.photo && fs.existsSync(path.join(odir(o.id), o.photo))) fs.copyFileSync(path.join(odir(o.id), o.photo), path.join(odir(id), o.photo));
+  const n = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: o.childName, nameInput: o.nameInput, email: o.email, lang: o.lang,
+    photo: o.photo, test: o.test || undefined, status: 'awaiting_payment', nameCheck: o.nameCheck || [], retryOf: o.no, createdAt: new Date().toISOString() };
+  log(n, `створено повторно після невдалої оплати ${o.no}`); save(n);
+  o.retriedAs = n.no; log(o, `повторна заявка ${n.no}`); save(o);
+  return n;
 }
 const LT = {
   'sr-Latn': { title: 'Moja porudžbina', h: 'Preuzmite svoju čestitku', p: 'Za to su vam potrebni email sa kog ste poručili i broj porudžbine.', email: 'Email', no: 'Broj porudžbine', go: 'Uđi',
@@ -259,7 +312,7 @@ function loginPage(lang, err = '', email = '', no = '') {
 <h1>${esc(t.h)}</h1><p class="muted" style="margin:0">${esc(t.p)}</p>
 ${err ? `<p class="err" role="alert">${esc(t[err])}</p>` : ''}
 <label>${esc(t.email)}<input type="email" name="email" required autocomplete="email" inputmode="email" value="${esc(email)}"></label>
-<label>${esc(t.no)}<input name="no" required inputmode="numeric" autocomplete="off" pattern="[0-9 ]{6,8}" maxlength="8" placeholder="482917" value="${esc(no)}"></label>
+<label>${esc(t.no)}<input name="no" required autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="CT-00001" value="${esc(no)}"></label>
 <button class="b" type="submit">${esc(t.go)}</button>
 <p class="muted" style="margin:0">${esc(t.help)}</p><a class="muted" href="/">${esc(t.home)}</a></form></section>`, lang);
 }
@@ -267,11 +320,11 @@ const CSV_COLS = [['no', 'Номер'], ['createdAt', 'Створено'], ['chi
   ['amount', 'Сума'], ['payMethod', 'Оплата'], ['paidAt', 'Оплачено'], ['sentAt', 'Надіслано'], ['note', 'Нотатка']];
 function ordersCsv(bom = true) {   // лише дані замовлення, без фото і відео
   const q = (v) => { v = String(v ?? ''); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
-  return (bom ? '\ufeff' : '') + [CSV_COLS.map(c => c[1]).join(','), ...listOrders().map(o => CSV_COLS.map(([k]) => q(k === 'status' ? (STU[o.status] || o.status) : o[k])).join(','))].join('\n');
+  return (bom ? '\ufeff' : '') + [CSV_COLS.map(c => c[1]).join(','), ...listOrders().filter(o => !o.test).map(o => CSV_COLS.map(([k]) => q(k === 'status' ? (STU[o.status] || o.status) : o[k])).join(','))].join('\n');
 }
-const STU = { awaiting_payment: 'Чекає оплату', queued: 'У черзі', rendering: 'Рендер', review: 'На перевірці', sent: 'Надіслано', failed: 'Помилка', rejected: 'Скасовано' };
+const STU = { awaiting_payment: 'Чекає оплату', queued: 'У черзі', rendering: 'Рендер', review: 'На перевірці', sent: 'Надіслано', failed: 'Помилка', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' };
 function adminPage(q = '', st = '') {
-  const all = listOrders(), day = new Date().toISOString().slice(0, 10), wk = Date.now() - 7 * 864e5;
+  const everything = listOrders(), all = everything.filter(o => !o.test), day = new Date().toISOString().slice(0, 10), wk = Date.now() - 7 * 864e5;
   const cnt = (f) => all.filter(f).length, money = all.reduce((a, o) => a + (Number(o.amount) || 0), 0);
   const rs = all.map(o => o.result?.renderSeconds).filter(Boolean), avg = rs.length ? Math.round(rs.reduce((a, b) => a + b, 0) / rs.length / 60) : null;
   let disk = ''; try { const f = fs.statfsSync(DATA); disk = Math.round(f.bavail * f.bsize / 1e9) + ' ГБ'; } catch {}
@@ -280,9 +333,9 @@ function adminPage(q = '', st = '') {
     ['Виручка', money ? money.toLocaleString('uk-UA') : '0'], ['Сер. рендер', avg != null ? avg + ' хв' : '—'], ['Вільно на диску', disk || '—']]
     .map(([l, v]) => `<div class="kpi"><span class="muted">${l}</span><b>${esc(String(v))}</b></div>`).join('');
   const ql = q.trim().toLowerCase();
-  const list = all.filter(o => (!st || o.status === st) && (!ql || [o.no, o.id, o.childName, o.nameInput, o.email].some(v => String(v || '').toLowerCase().includes(ql))));
+  const list = everything.filter(o => (!st || o.status === st) && (!ql || [o.no, o.id, o.childName, o.nameInput, o.email].some(v => String(v || '').toLowerCase().includes(ql))));
   const opts = ['', ...Object.keys(STU)].map(k => `<option value="${k}"${k === st ? ' selected' : ''}>${k ? STU[k] : 'Усі статуси'}</option>`).join('');
-  const rows = list.slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(STU[o.status] || o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span> <span class="muted">${esc(o.email)} · ${esc(o.createdAt.slice(0, 16).replace('T', ' '))} · ${esc(o.lang)}</span>
+  const rows = list.slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(STU[o.status] || o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span>${o.test ? ' <span class="tag" style="color:var(--gold)">ТЕСТ</span>' : ''}${o.retryOf ? ` <span class="muted">повтор після ${esc(o.retryOf)}</span>` : ''}${o.retriedAs ? ` <span class="muted">→ ${esc(o.retriedAs)}</span>` : ''} <span class="muted">${esc(o.email)} · ${esc(o.createdAt.slice(0, 16).replace('T', ' '))} · ${esc(o.lang)}</span>
 ${o.nameInput && o.nameInput !== o.childName ? `<p class="muted">Введено: ${esc(o.nameInput)}</p>` : ''}${o.nameCheck?.length ? `<p class="muted">Ім'я перевірити: ${esc(o.nameCheck.join(', '))}</p>` : ''}
 ${o.amount ? `<p class="muted">Оплата: ${esc(String(o.amount))} ${esc(o.payMethod || '')} · ${esc((o.paidAt || '').slice(0, 16).replace('T', ' '))}</p>` : ''}
 ${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${esc(o.result.reviewReasons.join(', '))}</p>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
@@ -295,7 +348,7 @@ ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Пере
   return page('Адмінка', `<style>.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0 0 18px}.kpi{background:#173328;border:1px solid var(--line);border-radius:14px;padding:12px}.kpi b{display:block;font-size:24px;color:var(--gold)}
 .flt{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}input,select{font:15px system-ui,sans-serif;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0e211a;color:var(--ink)}.flt input{flex:1;min-width:200px}
 .note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}</style>
-<header class="top"><span class="logo">✳ Čestitam · CRM</span><a class="muted" href="/admin/export.csv">⬇ CSV</a></header>
+<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a></span></header>
 <div class="kpis">${tiles}</div>
 <form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
 <p class="muted">Знайдено: ${list.length}. Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Нічого не знайдено.</p>'}`);
@@ -338,7 +391,7 @@ const server = http.createServer(async (req, res) => {
       const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');
       fs.mkdirSync(odir(id), { recursive: true });
       fs.writeFileSync(path.join(odir(id), `photo.${ext}`), buf);
-      const o = { id, no: newNo(), key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email,
+      const o = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email,
         lang: ['uk', 'sr-Latn', 'sr-Cyrl'].includes(body.lang) ? body.lang : 'sr-Latn', photo: `photo.${ext}`,
         status: PAYMENT_MODE === 'none' ? 'queued' : 'awaiting_payment', nameCheck: nm.needsReview ? nm.reviewReasons : [], createdAt: new Date().toISOString() };
       log(o, 'створено'); save(o); notify(o, '🆕 Нове замовлення'); setImmediate(tick);
@@ -359,16 +412,35 @@ const server = http.createServer(async (req, res) => {
       const lang = LT[f.get('lang')] ? f.get('lang') : 'sr-Latn';
       const email = String(f.get('email') || '').trim().toLowerCase().slice(0, 120), no = String(f.get('no') || '').replace(/\D/g, '').slice(0, 8);
       if (loginLimited('ip:' + ip) || (email && loginLimited('em:' + email))) { event({ msg: 'вхід клієнта: забагато спроб', ip, email }); return send(res, 429, loginPage(lang, 'many', email, no)); }
-      const o = no.length === 6 && listOrders().find(x => x.no === no && safeEq(h(String(x.email || '').toLowerCase()), h(email)));
+      const n = Number(no), em = (x) => safeEq(h(String(x.email || '').toLowerCase()), h(email));
+      const o = no && (listOrders().find(x => x.seq === n && em(x)) || (no.length === 6 && listOrders().find(x => x.noOld === no && em(x))));
       if (!o) { event({ msg: 'вхід клієнта: не збіглося', ip, email, no }); return send(res, 200, loginPage(lang, 'err', email, no), { 'Cache-Control': 'no-store' }); }
       log(o, `клієнт увійшов (${ip})`); save(o);
       return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
     }
 
     let mm;
+    // оплата: /o/<id>/<key>/pay | retry | mock/ok | mock/fail
+    if (req.method === 'POST' && (mm = /^\/o\/([\w-]+)\/([a-f0-9]{32})\/(pay|retry|mock\/ok|mock\/fail)$/.exec(p))) {
+      const o = load(mm[1]); if (!o || !safeEq(o.key, mm[2])) return send(res, 404, {});
+      const base = `/o/${o.id}/${o.key}`, act = mm[3];
+      if (act === 'pay') {
+        if (o.status !== 'awaiting_payment') return send(res, 303, '', { Location: base });
+        if (!canPay(o)) return send(res, 303, '', { Location: base });
+        log(o, 'клієнт перейшов до оплати'); save(o);
+        return send(res, 200, mockCheckout(o));   // тут буде перехід на Stripe Checkout
+      }
+      if (act === 'mock/ok' && canPay(o) && o.status === 'awaiting_payment') { markPaid(o, { method: o.test ? 'тест' : 'mock' }); return send(res, 303, '', { Location: base + '?pay=paid' }); }
+      if (act === 'mock/fail' && canPay(o) && o.status === 'awaiting_payment') { o.status = 'payment_failed'; log(o, 'оплата не пройшла'); save(o); return send(res, 303, '', { Location: base }); }
+      if (act === 'retry' && o.status === 'payment_failed') {
+        if (o.retriedAs) { const prev = listOrders().find(x => x.no === o.retriedAs); if (prev) return send(res, 303, '', { Location: `/o/${prev.id}/${prev.key}` }); }
+        const n = retryOrder(o); return send(res, 303, '', { Location: `/o/${n.id}/${n.key}` });
+      }
+      return send(res, 303, '', { Location: base });
+    }
     if ((mm = /^\/o\/([\w-]+)\/([a-f0-9]{32})(\/video\.mp4)?$/.exec(p))) {
       const o = load(mm[1]); if (!o || !safeEq(o.key, mm[2])) return send(res, 404, page('Nije pronađeno', '<h1>Nije pronađeno</h1>'));
-      if (!mm[3]) return send(res, 200, customerPage(o));
+      if (!mm[3]) return send(res, 200, customerPage(o, u.searchParams.get('pay') || ''), { 'Cache-Control': 'no-store' });
       if (o.status !== 'sent') return send(res, 404, { error: 'not_ready' });
       if (o.videoPurged) return send(res, 410, { error: 'expired' });
       return streamFile(req, res, path.join(odir(o.id), o.video), u.searchParams.has('dl'));   // завжди оригінал, без перестиснення
@@ -384,6 +456,14 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/admin')) {
       if (!isAdmin(req)) return send(res, 403, page('Ні', '<h1>Увійдіть через /admin/login?token=…</h1>'));
       if (p === '/admin' && req.method === 'GET') return send(res, 200, adminPage(u.searchParams.get('q') || '', u.searchParams.get('st') || ''), { 'Cache-Control': 'no-store' });
+      if (p === '/admin/test-order' && req.method === 'POST') {   // перевірка кругу оплати без рендеру і без витрат
+        const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');
+        fs.mkdirSync(odir(id), { recursive: true });
+        const o = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: 'Milica', nameInput: 'Milica', email: 'test@cestitam.eu', lang: 'uk',
+          photo: null, test: true, status: 'awaiting_payment', nameCheck: [], createdAt: new Date().toISOString() };
+        log(o, 'створено тестове замовлення з адмінки'); save(o);
+        return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
+      }
       if (p === '/admin/export.csv') { event({ msg: 'адмін: експорт CSV' }); return send(res, 200, ordersCsv(), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="zamovlennya.csv"', 'Cache-Control': 'no-store' }); }
       if ((mm = /^\/admin\/([\w-]+)\/note$/.exec(p)) && req.method === 'POST') {
         const o = load(mm[1]); if (!o) return send(res, 404, {});
