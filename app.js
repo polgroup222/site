@@ -3,7 +3,7 @@
 (function () {
 const T = {
 'sr-Latn': {
-  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', langLabel: 'Jezik', cta: 'Napravi čestitku',
+  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', navMy: 'Moja porudžbina', langLabel: 'Jezik', cta: 'Napravi čestitku',
   edition: 'Novogodišnje izdanje',
   heroTitle: 'Deda Mraz zna ime vašeg deteta',
   heroLead: 'Novogodišnji film u kom Deda Mraz izgovara ime deteta, upisuje ga u čarobnu knjigu i kači njegovu fotografiju na zid.',
@@ -19,7 +19,7 @@ const T = {
   fEmail: 'Vaš email', fEmailHint: 'Na ovu adresu šaljemo link do gotovog videa.',
   consent: 'Roditelj sam ili staratelj i slažem se sa <a href="privacy.html">pravilima privatnosti</a>.',
   send: 'Pošalji porudžbinu', sending: 'Šaljemo…', payNote: 'Posle porudžbine javljamo vam se sa uputstvom za plaćanje. Izrada počinje čim stigne uplata.',
-  ok: 'Porudžbina je primljena. Status i gotov video su na vašoj stranici:', open: 'Otvori stranicu porudžbine',
+  ok: 'Porudžbina je primljena. Status i gotov video su na vašoj stranici:', open: 'Otvori stranicu porudžbine', noMsg: 'Broj vaše porudžbine:', noKeep: 'Sačuvajte ga: sa njim i emailom uvek možete otvoriti stranicu na „Moja porudžbina“.',
   eName: 'Upišite ime deteta latinicom.', ePhoto: 'Dodajte fotografiju (JPG, PNG ili HEIC, do 30 MB).', eEmail: 'Proverite email adresu.', eConsent: 'Potvrdite saglasnost sa pravilima privatnosti.',
   eMany: 'Previše pokušaja. Pokušajte ponovo za 10 minuta.', eNet: 'Porudžbina nije poslata. Proverite internet i pokušajte ponovo.', eOff: 'Porudžbine trenutno nisu otvorene.',
   faqTitle: 'Pitanja', q1: 'Koliko se čeka na video?', a1: 'Obično 15 do 30 minuta posle uplate. U danima pred Novu godinu može potrajati do nekoliko sati.',
@@ -30,7 +30,7 @@ const T = {
   foot: 'Mali film za veliko verovanje.', footContact: 'Kontakt', footLegal: 'Pravila', privacy: 'Privatnost',
 },
 uk: {
-  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', langLabel: 'Мова', cta: 'Створити привітання',
+  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', navMy: 'Моє замовлення', langLabel: 'Мова', cta: 'Створити привітання',
   edition: 'Новорічний випуск',
   heroTitle: 'Дід Мороз знає ім’я вашої дитини',
   heroLead: 'Новорічний фільм, у якому Дід Мороз вимовляє ім’я дитини, вписує його в чарівну книгу і вішає її фото на стіну.',
@@ -46,7 +46,7 @@ uk: {
   fEmail: 'Ваш email', fEmailHint: 'На цю адресу надішлемо посилання на готове відео.',
   consent: 'Я батько, мати чи опікун і погоджуюся з <a href="privacy.html">правилами конфіденційності</a>.',
   send: 'Надіслати замовлення', sending: 'Надсилаємо…', payNote: 'Після замовлення ми надішлемо інструкцію з оплати. Створення починається одразу після оплати.',
-  ok: 'Замовлення прийнято. Статус і готове відео будуть на вашій сторінці:', open: 'Відкрити сторінку замовлення',
+  ok: 'Замовлення прийнято. Статус і готове відео будуть на вашій сторінці:', open: 'Відкрити сторінку замовлення', noMsg: 'Номер вашого замовлення:', noKeep: 'Збережіть його: з ним і email ви завжди відкриєте сторінку в розділі «Моє замовлення».',
   eName: 'Впишіть ім’я дитини латиницею.', ePhoto: 'Додайте фото (JPG, PNG або HEIC, до 30 МБ).', eEmail: 'Перевірте адресу email.', eConsent: 'Підтвердьте згоду з правилами конфіденційності.',
   eMany: 'Забагато спроб. Спробуйте ще раз за 10 хвилин.', eNet: 'Замовлення не надіслано. Перевірте інтернет і спробуйте ще раз.', eOff: 'Замовлення зараз не приймаються.',
   faqTitle: 'Запитання', q1: 'Скільки чекати на відео?', a1: 'Зазвичай 15–30 хвилин після оплати. Перед Новим роком може знадобитися кілька годин.',
@@ -72,6 +72,7 @@ const t = () => T[lang];
 function applyLang() {
   document.documentElement.lang = lang; sel.value = lang;
   document.querySelectorAll('[data-i]').forEach(el => { const v = t()[el.dataset.i]; if (v !== undefined) el.innerHTML = v; });
+  document.querySelectorAll('a[href^="/porudzbina"]').forEach(a => a.setAttribute('href', '/porudzbina?lang=' + lang));
   const has = document.querySelector('#preview:not([hidden])');
   document.querySelector('.drop-text').textContent = has ? t().fPhotoChange : t().fPhotoBtn;
 }
@@ -151,7 +152,9 @@ form.addEventListener('submit', async (e) => {
     const r = await fetch(`${api}/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, lang, photo }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { const m = { name: [t().eName, fName], photo: [t().ePhoto, fPhoto], email: [t().eEmail, form.email], too_many: [t().eMany] }[j.error] || [t().eNet]; return say(m[0], 1, m[1]); }
-    out.className = 'result'; out.textContent = t().ok + ' '; const a = document.createElement('a'); a.href = j.url; a.textContent = t().open; a.rel = 'noopener'; out.append(a); out.hidden = false;
+    out.className = 'result'; out.textContent = t().ok + ' '; const a = document.createElement('a'); a.href = j.url; a.textContent = t().open; a.rel = 'noopener'; out.append(a);
+    if (j.no) { const p = document.createElement('p'), b = document.createElement('b'); b.textContent = j.no; p.append(t().noMsg + ' ', b, ' ' + t().noKeep); out.append(p); }
+    out.hidden = false;
     form.reset(); preview.hidden = true; document.querySelector('.drop-text').textContent = t().fPhotoBtn;
     out.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } catch (err) { say(err.code === 'photo' ? t().ePhoto : t().eNet, 1, err.code === 'photo' ? fPhoto : null); }
