@@ -21,8 +21,7 @@ h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),var(--gold2
 .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 #7bd88f88;animation:ping 2s infinite}
 .live.off i{background:var(--warn);animation:none}
 @keyframes ping{70%{box-shadow:0 0 0 8px #7bd88f00}100%{box-shadow:0 0 0 0 #7bd88f00}}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
 .card{position:relative;border-radius:24px;padding:20px;background:linear-gradient(180deg,#ffffff10,#ffffff05);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 30px 60px #0007;overflow:hidden}
 .card:before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,#f2c46d55,transparent 40%,transparent 70%,#ffffff22);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
 .agent .top{display:flex;align-items:center;gap:14px}
@@ -62,6 +61,21 @@ h2{font:600 20px/1.2 Georgia,serif;margin:0 0 4px}.sub{color:var(--mut);font-siz
 .frames figcaption{color:var(--mut);font-size:12px;margin-top:4px}
 .empty{color:var(--mut);padding:18px 4px}
 .foot{margin-top:18px;color:var(--mut);font-size:12px;text-align:center}
+.rep{margin-top:14px}.rhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.rhead select{font:600 14px system-ui,sans-serif;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:#0e211a;color:var(--ink)}
+.badge[hidden]{display:none}.badge{display:inline-block;margin-left:8px;padding:3px 9px;border-radius:999px;font:600 12px system-ui,sans-serif;background:#7ab8ff22;color:#cfe4ff;vertical-align:middle}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kp div{border-radius:16px;padding:12px 14px;background:#00000026;border:1px solid var(--line)}.kp span{display:block;color:var(--mut);font-size:12px}
+.kp b{font:600 28px/1.15 Georgia,serif;color:var(--gold)}.kp i{font-style:normal;font-size:12px;margin-left:6px}.up{color:var(--ok)}.dn{color:var(--warn)}.eq{color:var(--mut)}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:900px){.rgrid{grid-template-columns:1fr}}
+.box{border-radius:18px;padding:14px;background:#00000020;border:1px solid var(--line)}.box h3{font:600 15px Georgia,serif;margin:0 0 10px}
+.fun{display:grid;gap:8px}.fun div{display:grid;grid-template-columns:110px 1fr 34px;align-items:center;gap:8px;font-size:13px}
+.bar{height:12px;border-radius:999px;background:#ffffff10;overflow:hidden}.bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.wk{display:flex;align-items:flex-end;gap:8px;height:130px;padding-top:8px}.wk div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--mut)}
+.wk b{display:block;width:100%;max-width:34px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--gold2),#b8862e);min-height:3px}.wk .cur b{box-shadow:0 0 0 2px #fff6}.wk em{font-style:normal;color:var(--ink);font-size:12px}
+.lst{list-style:none;margin:0;padding:0;font-size:13px}.lst li{padding:6px 0;border-top:1px solid var(--line)}.lst li:first-child{border-top:0}.lst a,.tbl a{color:var(--gold);text-decoration:none}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl td,.tbl th{padding:7px 6px;border-top:1px solid var(--line);text-align:left}.tbl th{color:var(--mut);font-weight:500;border-top:0}.tbl td:last-child,.tbl th:last-child{text-align:right}
+.tblw{overflow-x:auto}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style></head><body><div class="aurora"></div><main>
 <header><div class="brand"><div><a href="/admin">← CRM</a><h1>Мої <em>агенти</em></h1></div></div>
@@ -72,10 +86,15 @@ h2{font:600 20px/1.2 Georgia,serif;margin:0 0 4px}.sub{color:var(--mut);font-siz
   <div class="chips" id="chips"></div><ul class="feed" id="feed"></ul></div>
  <div class="card"><h2>Останній ролик</h2><p class="sub" id="fsub">Кадри, які перевірив агент</p><div class="frames" id="frames"></div></div>
 </section>
+<section class="card rep"><div class="rhead"><div><h2>📊 Звіт за день<span class="badge" id="rlive" hidden>поки що · фінальний о 21:00</span></h2><p class="sub" id="rsub" style="margin:0"></p></div><select id="rday" aria-label="День"></select></div>
+<div class="kp" id="rkp"></div>
+<div class="rgrid"><div class="box"><h3>Воронка дня</h3><div class="fun" id="rfun"></div></div><div class="box"><h3>Оплачено за 7 днів</h3><div class="wk" id="rwk"></div></div>
+<div class="box"><h3>Що застрягло зараз</h3><ul class="lst" id="rstuck"></ul></div><div class="box"><h3>Робота агентів і швидкість</h3><ul class="lst" id="ragents"></ul></div></div>
+<div class="box" style="margin-top:14px"><h3>Замовлення дня</h3><div class="tblw"><table class="tbl" id="rtbl"></table></div></div></section>
 <p class="foot" id="foot"></p>
 </main>
 <script>
-const ICON={orders:'🧾',video:'🎬',watchdog:'🛡️'},NAME={orders:'Контроль замовлень',video:'Перевірка відео',watchdog:'Сторож'};
+const ICON={orders:'🧾',video:'🎬',watchdog:'🛡️',report:'📊'},NAME={orders:'Контроль замовлень',video:'Перевірка відео',watchdog:'Сторож',report:'Звіт'};
 const STATE={idle:'Чергує',working:'Працює',waiting:'Чекає',attention:'Потрібна ваша увага'};
 let filter='all',data=null;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -88,7 +107,7 @@ function render(){
   (a.checks&&a.checks.length?'<div class="checks">'+a.checks.map(c=>'<span class="chk'+(c.ok?'':' no')+'" title="'+esc(c.detail)+'">'+(c.ok?'✓ ':'✗ ')+esc(c.label)+'</span>').join('')+'</div>':'')+
   '<div class="stats">'+a.stats.map(s=>'<div class="stat"><span>'+esc(s[0])+'</span><b>'+s[1]+'</b></div>').join('')+'</div>'+
   '<div class="last">'+(a.last?'Остання дія: '+esc(a.last.msg)+' · '+ago(a.last.ts):'Ще нічого не робив')+'</div></article>').join('');
- const ks=['all','orders','video','watchdog'];
+ const ks=['all','orders','video','watchdog','report'];
  document.getElementById('chips').innerHTML=ks.map(k=>'<button class="chip'+(k===filter?' on':'')+'" data-k="'+k+'">'+(k==='all'?'Усі':ICON[k]+' '+NAME[k])+'</button>').join('');
  document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{filter=b.dataset.k;render()});
  const f=data.feed.filter(e=>filter==='all'||e.agent===filter);
@@ -104,6 +123,30 @@ async function load(){
  catch(e){document.getElementById('live').classList.add('off');document.getElementById('livet').textContent='немає зв’язку'}
 }
 load();setInterval(load,5000);
+let rday='',rdata=null;
+const money=n=>Number(n||0).toLocaleString('uk-UA');
+function delta(a,b){if(b==null)return '';if(a>b)return '<i class="up">↑ '+money(a-b)+'</i>';if(a<b)return '<i class="dn">↓ '+money(b-a)+'</i>';return '<i class="eq">=</i>'}
+const olink=o=>'<a href="/admin?q='+encodeURIComponent(o.no)+'">'+esc(o.no)+' · '+esc(o.name)+'</a>';
+function rrender(){const d=rdata;if(!d)return;const r=d.report,m=r.main,p=d.prev||{};
+ document.getElementById('rday').innerHTML=d.days.map(x=>'<option'+(x===d.day?' selected':'')+'>'+x+'</option>').join('');
+ document.getElementById('rlive').hidden=!(d.live&&d.day===d.today);
+ document.getElementById('rsub').textContent=new Date(d.day+'T12:00:00').toLocaleDateString('uk-UA',{weekday:'long',day:'numeric',month:'long'})+(d.live?'':' · зібрано о '+hm(r.generatedAt))+' · порівняння з учора';
+ document.getElementById('rkp').innerHTML=[['Нових замовлень',m.created,p.created],['Оплачено',m.paid,p.paid],['Виручка',m.money,p.money,1],['Надіслано клієнтам',m.sent,p.sent],['Середній чек',m.avgCheck,p.avgCheck,1]]
+  .map(k=>'<div><span>'+k[0]+'</span><b>'+(k[3]?money(k[1]):k[1])+'</b>'+delta(k[1],k[2])+'</div>').join('');
+ const f=r.funnel,mx=Math.max(1,f.created);
+ document.getElementById('rfun').innerHTML=[['Створили',f.created],['Оплатили',f.paid],['Відео готове',f.ready],['Надіслано',f.sent]].map(x=>'<div><span>'+x[0]+'</span><span class="bar"><i style="width:'+(x[1]/mx*100)+'%"></i></span><b>'+x[1]+'</b></div>').join('');
+ const wm=Math.max(1,...d.week.map(w=>w.paid));
+ document.getElementById('rwk').innerHTML=d.week.map(w=>'<div class="'+(w.day===d.day?'cur':'')+'" title="'+w.day+': оплачено '+w.paid+', виручка '+money(w.money)+'"><em>'+w.paid+'</em><b style="height:'+(w.paid/wm*95)+'%"></b>'+new Date(w.day+'T12:00:00').toLocaleDateString('uk-UA',{weekday:'short'})+'</div>').join('');
+ const s=r.stuck,st=[...s.hold,...s.review,...s.failed,...s.unpaid];
+ document.getElementById('rstuck').innerHTML=st.length?st.map(o=>'<li>'+olink(o)+' — '+esc(o.why)+'</li>').join(''):'<li>Нічого не застрягло ✓</li>';
+ const a=r.agents,sp=r.speed;
+ document.getElementById('ragents').innerHTML=['🧾 Перевірено замовлень: <b>'+a.ordersChecked+'</b>, затримано: <b>'+a.ordersHeld+'</b>','🎬 Перевірено роликів: <b>'+a.videosChecked+'</b>'+(a.videoIssues.length?', з зауваженнями: '+a.videoIssues.map(v=>esc(v.no)+' ('+esc(v.fails.join(', '))+')').join('; '):', усі без зауважень'),
+  '🛡️ Тривог сервера: <b>'+a.alarms.length+'</b>'+(a.alarms.length?' — '+a.alarms.map(x=>esc(x.msg)).join('; '):''),'⏱ Від оплати до готового відео: <b>'+(sp.payToReadyMin!=null?sp.payToReadyMin+' хв':'—')+'</b>','🎞 Середній рендер: <b>'+(sp.renderMin!=null?sp.renderMin+' хв':'—')+'</b>'].map(x=>'<li>'+x+'</li>').join('');
+ document.getElementById('rtbl').innerHTML=r.orders.length?'<tr><th>Час</th><th>Замовлення</th><th>Статус</th><th>Сума</th></tr>'+r.orders.map(o=>'<tr><td>'+hm(o.createdAt)+'</td><td>'+olink(o)+'</td><td>'+esc(o.status)+'</td><td>'+(o.amount?money(o.amount):'—')+'</td></tr>').join(''):'<tr><td class="empty">Цього дня замовлень не було.</td></tr>';
+}
+async function rload(){try{const r=await fetch('/admin/report.json'+(rday?'?day='+rday:''),{cache:'no-store'});if(r.ok){rdata=await r.json();rrender()}}catch(e){}}
+document.getElementById('rday').onchange=e=>{rday=e.target.value;rload()};
+rload();setInterval(rload,60000);
 </script></body></html>`;
 }
 module.exports = { agentsPage };

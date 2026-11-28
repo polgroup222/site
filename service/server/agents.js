@@ -173,6 +173,16 @@ function agentsFeed({ dataDir, orders, now, busy, tg: tgOn }) {
     checks: (w?.checks || []).map(c => ({ ok: c.ok, label: c.label, detail: c.detail })),
     stats: [['Перевірок сьогодні', w ? (() => { const p = localParts(); return Math.floor((Number(p.hour) * 60 + Number(p.minute)) / 10); })() : 0], ['Тривог сьогодні', of('watchdog').filter(isToday).filter(e => !e.ok).length]],
     last: w ? { ts: w.ts, ok: !wBad.length, msg: wBad.length ? 'проблема: ' + wBad.map(c => c.label).join(', ') : 'усе гаразд' } : null });
+  const rT = of('report'), lastRep = rT.filter(e => e.ok && /^звіт/.test(e.msg)).slice(-1)[0];
+  const todayOrders = orders.filter(o => !o.test && localDay(new Date(o.createdAt)) === today);
+  const todayPaid = orders.filter(o => !o.test && o.paidAt && localDay(new Date(o.paidAt)) === today);
+  const repDone = lastRep && localDay(new Date(lastRep.ts)) === today;
+  const sheetErr = rT.filter(isToday).filter(e => !e.ok).slice(-1)[0];
+  A.push({ key: 'report', name: 'Звіт', icon: '📊', role: 'Підсумок дня о 21:00 · Google-таблиця оплачених',
+    state: sheetErr ? 'attention' : 'idle',
+    line: sheetErr ? sheetErr.msg : repDone ? 'Звіт за сьогодні готовий' : 'Збирає дані, звіт о 21:00',
+    stats: [['Замовлень сьогодні', todayOrders.length], ['Виручка сьогодні', todayPaid.reduce((a, o) => a + (Number(o.amount) || 0), 0).toLocaleString('uk-UA')]],
+    last: rT.slice(-1)[0] || null });
   const feed = ev.slice(-60).reverse().map(e => ({ ts: e.ts, agent: e.agent, ok: e.ok, text: text(e), no: e.no, name: e.name, order: e.order }));
   if (w && !w.stale) feed.unshift({ ts: w.ts, agent: 'watchdog', ok: !wBad.length, text: wBad.length ? 'перевірив сервер: ' + wBad.map(c => c.label).join(', ') : 'перевірив сервер: усе гаразд', live: true });
   const lv = [...of('video')].reverse().find(e => (e.frames || []).length);
@@ -180,4 +190,4 @@ function agentsFeed({ dataDir, orders, now, busy, tg: tgOn }) {
     frames: lv ? { order: lv.order, no: lv.no, name: lv.name, ok: lv.ok, ts: lv.ts, list: lv.frames } : null };
 }
 
-module.exports = { agentsFeed, checkOrder, checkVideo, qcFails, problemsNow, watchdogState, morningText, startMorning, tg, label };
+module.exports = { localParts, localDay, readEvents, agentsFeed, checkOrder, checkVideo, qcFails, problemsNow, watchdogState, morningText, startMorning, tg, label };
