@@ -1,5 +1,14 @@
 {$DOMAIN} {
   encode gzip
+  # заголовки безпеки для всіх сторінок (? = лише якщо сервіс сам не задав, напр. no-referrer на сторінці клієнта)
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    ?X-Content-Type-Options "nosniff"
+    ?X-Frame-Options "DENY"
+    ?Referrer-Policy "strict-origin-when-cross-origin"
+    ?Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+    -Server
+  }
   request_body {
     max_size 20MB
   }
