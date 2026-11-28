@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { resolveName } = require('../src/names');
+const agents = require('./agents');
 const { spawn } = require('child_process');
 // рендер у дочірньому процесі: сервер лишається чуйним, поки йде ffmpeg
 function renderInChild(job) {
@@ -131,10 +132,8 @@ async function emailCustomer(o) {
 
 // ---------- Telegram: сповіщення власнику (TG_BOT_TOKEN + TG_CHAT_ID у .env) ----------
 function notify(o, what) {
-  if (!ENV.TG_BOT_TOKEN || !ENV.TG_CHAT_ID) return;
-  const text = `${what}\n№ ${o.no || o.id} · ${o.childName} · ${o.email}\n${PUBLIC_URL}/admin?q=${o.no || o.id}`;
-  fetch(`https://api.telegram.org/bot${ENV.TG_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: ENV.TG_CHAT_ID, text, disable_web_page_preview: true }) }).catch(e => console.error('tg', e.message));
+  if (o.test) return;
+  agents.tg(`${what}\n№ ${o.no || o.id} · ${o.childName}${o.email ? ' · ' + o.email : ''}\n${PUBLIC_URL}/admin?q=${o.no || o.id}`);
 }
 
 // ---------- воркер: одне замовлення за раз ----------
@@ -144,6 +143,16 @@ async function tick() {
   const o = listOrders().reverse().find(x => x.status === 'queued' && !x.test);   // тестові замовлення не рендеримо
   if (!o) return;
   busy = true;
+  // агент 1: контроль замовлення перед рендером (оплата, фото, ім'я); підозріле — чекає вашого «OK»
+  if (!o.check || (o.paidAt && o.check.at < o.paidAt)) {
+    o.check = await agents.checkOrder(o, odir(o.id), { paymentMode: PAYMENT_MODE });
+    log(o, o.check.ok ? 'контроль замовлення: усе гаразд' : 'контроль замовлення: ' + o.check.problems.map(agents.label).join(', '));
+  }
+  if (!o.check.ok && !o.checkOk) {
+    o.status = 'hold'; log(o, 'чекає вашого OK перед рендером'); save(o);
+    notify(o, '⏸ Замовлення чекає вашого OK: ' + o.check.problems.map(agents.label).join(', '));
+    busy = false; setImmediate(tick); return;
+  }
   o.status = 'rendering'; o.attempts = (o.attempts || 0) + 1; log(o, 'рендер почато'); save(o);
   try {
     const r = await renderInChild({ id: 'video', name: o.childName, photo: path.join(odir(o.id), o.photo), master: MASTER,
@@ -152,9 +161,14 @@ async function tick() {
     o.video = 'out/video.mp4';
     // проміжні великі файли не тримаємо
     for (const f of ['portrait_overlay.mkv']) fs.rmSync(path.join(odir(o.id), 'out', f), { force: true });
-    if (r.status === 'done' && AUTO_SEND) { o.status = 'sent'; await emailCustomer(o); }
-    else { o.status = 'review'; notify(o, '🎬 Відео готове, перевірте'); }
     log(o, `рендер готовий: ${r.status} ${r.reviewReasons.join(',')}`);
+    // агент 2: перевірка готового відео проти мастера
+    o.qc = await agents.checkVideo({ masterJson: MASTER, masterVideo: ENV.MASTER_VIDEO || path.join(path.dirname(MASTER), JSON.parse(fs.readFileSync(MASTER, 'utf8')).video),
+      video: path.join(odir(o.id), o.video), outDir: path.join(odir(o.id), 'out'), voiceDur: r.voice?.dur });
+    const bad = agents.qcFails(o.qc);
+    log(o, bad.length ? 'перевірка відео: ' + bad.map(c => `${c.label} (${c.detail})`).join('; ') : 'перевірка відео: усе гаразд');
+    if (r.status === 'done' && !bad.length && AUTO_SEND) { o.status = 'sent'; o.sentAt = new Date().toISOString(); await emailCustomer(o); }
+    else { o.status = 'review'; notify(o, bad.length ? '🎬 Відео готове, але є зауваження: ' + bad.map(c => c.label).join(', ') : '🎬 Відео готове, перевірка пройдена ✓. Подивіться і підтвердіть'); }
   } catch (e) {
     o.status = o.attempts >= 2 ? 'failed' : 'queued'; o.error = String(e.message || e).slice(0, 2000); if (o.status === 'failed') notify(o, '⚠️ Рендер не вдався'); log(o, 'помилка: ' + o.error.slice(0, 300));
   }
@@ -170,6 +184,7 @@ async function tick() {
 // після перезапуску: незавершені рендери повертаємо в чергу
 for (const o of listOrders()) if (o.status === 'rendering') { o.status = 'queued'; log(o, 'перезапуск сервера'); save(o); }
 setInterval(tick, 5000);
+agents.startMorning({ listOrders, dataDir: DATA, publicUrl: PUBLIC_URL });
 
 // ---------- приватність: автоматичне видалення ----------
 const daysSince = (t) => t ? (Date.now() - Date.parse(t)) / 864e5 : 0;
@@ -207,10 +222,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}a{color:var(--
 @media (prefers-reduced-motion:reduce){.flake{animation:none}}
 </style></head><body><main>${inner}</main></body></html>`;
 const CT = {
-  'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano', payment_failed: 'Plaćanje nije prošlo' },
+  'sr-Latn': { title: 'Čestitka za', st: { awaiting_payment: 'Čeka uplatu', queued: 'U redu za izradu', rendering: 'Deda Mraz upravo snima', review: 'Proveravamo svaki detalj', hold: 'Proveravamo fotografiju i ime', sent: 'Spremno!', failed: 'Došlo je do greške, javićemo vam se', rejected: 'Otkazano', payment_failed: 'Plaćanje nije prošlo' },
     eta: (m) => `Otprilike još ${m} min. Stranica se sama osvežava.`, pay: 'Čim uplata bude potvrđena, počinjemo izradu.', mail: 'Poslaćemo vam i email kada bude spremno.',
     dl: 'Preuzmi video', share: 'Podeli', copy: 'Kopiraj link', copied: 'Link je kopiran', gone: 'Video je obrisan nakon isteka roka čuvanja.', keep: (d) => `Video čuvamo ${d} dana. Preuzmite ga na vreme.`, steps: ['Porudžbina', 'Izrada', 'Provera', 'Spremno'], no: 'Broj porudžbine' },
-  uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' },
+  uk: { title: 'Привітання для', st: { awaiting_payment: 'Чекаємо оплату', queued: 'У черзі', rendering: 'Дід Мороз записує привітання', review: 'Перевіряємо кожну деталь', hold: 'Перевіряємо фото та ім’я', sent: 'Готово!', failed: 'Сталася помилка, ми зв’яжемося з вами', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' },
     eta: (m) => `Приблизно ще ${m} хв. Сторінка оновлюється сама.`, pay: 'Щойно оплату підтвердимо, почнемо створення.', mail: 'Коли буде готово, ми також надішлемо лист.',
     dl: 'Завантажити відео', share: 'Поділитися', copy: 'Скопіювати посилання', copied: 'Посилання скопійовано', gone: 'Відео видалено після завершення терміну зберігання.', keep: (d) => `Відео зберігаємо ${d} днів. Завантажте його вчасно.`, steps: ['Замовлення', 'Створення', 'Перевірка', 'Готово'], no: 'Номер замовлення' },
 };
@@ -241,7 +256,7 @@ CT['sr-Cyrl'] = Object.fromEntries(Object.entries(CT['sr-Latn']).map(([k, v]) =>
 const canPay = (o) => o.test || PAYMENT_MODE === 'mock';   // Stripe підключимо тут же: PAYMENT_MODE=stripe
 function customerPage(o, flash = '') {
   const t = CT[o.lang] || CT['sr-Latn'], ready = o.status === 'sent' && !o.videoPurged;
-  const step = { awaiting_payment: 0, payment_failed: 0, queued: 1, rendering: 1, review: 2, sent: 4 }[o.status] ?? 0;
+  const step = { awaiting_payment: 0, payment_failed: 0, hold: 1, queued: 1, rendering: 1, review: 2, sent: 4 }[o.status] ?? 0;
   const m = eta(o), base = `/o/${o.id}/${o.key}`;
   const steps = t.steps.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><span>${i < step ? '✓' : i + 1}</span>${esc(s)}</li>`).join('');
   const row = (label, val, copy) => `<div class="kv"><span class="muted">${esc(label)}</span><b>${esc(val)}</b>${copy ? `<button class="b ghost cp" data-v="${esc(val)}">⧉ ${esc(t.copy1)}</button>` : ''}</div>`;
@@ -255,11 +270,11 @@ function customerPage(o, flash = '') {
 ${canPay(o) ? `<form method="post" action="${base}/pay"><button class="b wide">${esc(t.pay)}</button></form>` : `<p class="muted">${esc(t.payManual)}</p>`}`;
   else if (o.status === 'payment_failed') body = `<div class="wait"><div class="flake bad">!</div><p class="big">${esc(t.failH)}</p><p class="muted">${esc(t.failP)}</p></div>
 <form method="post" action="${base}/retry"><button class="b wide red">${esc(t.retry)}</button></form>`;
-  else if (['queued', 'rendering', 'review'].includes(o.status)) body = `<div class="wait"><div class="flake">❄</div>
+  else if (['hold', 'queued', 'rendering', 'review'].includes(o.status)) body = `<div class="wait"><div class="flake">❄</div>
 ${flash === 'paid' ? `<p class="ok">✓ ${esc(t.paidH)}</p>` : ''}<p class="big">${esc(t.makingH)}</p>${m && !o.test ? `<p class="muted">${esc(t.eta(m))}</p>` : ''}</div>
 ${facts(true)}<p class="muted">${esc(t.makingP)}</p>${o.email ? `<p class="muted">${esc(t.mail)}</p>` : ''}`;
   else body = `<div class="wait"><p class="big">${esc(t.st[o.status] || o.status)}</p></div>${facts(true)}`;
-  const live = ['queued', 'rendering', 'review'].includes(o.status) && !o.test;
+  const live = ['hold', 'queued', 'rendering', 'review'].includes(o.status) && !o.test;
   return page('Čestitam', `<style>.facts{display:grid;gap:8px;margin:16px 0}.kv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#0e211a}
 .kv span{flex-basis:100%;font-size:13px}.kv b{font-size:19px;letter-spacing:.02em;overflow-wrap:anywhere;flex:1;min-width:0}.kv{row-gap:4px}.kv .b{padding:8px 14px;font-size:14px}.wide{width:100%;justify-content:center;padding:15px;font-size:17px}.red{background:var(--red);color:#fff}
 .ok{color:var(--gold);font-weight:600;margin:0}.flake.bad{animation:none;color:var(--red);font:700 44px/1 Georgia,serif}.testb{border:1px dashed var(--gold);border-radius:12px;padding:8px 12px;color:var(--gold);font-size:14px}form{display:block}</style>
@@ -329,7 +344,7 @@ function ordersCsv(bom = true) {   // лише дані замовлення, б
   const q = (v) => { v = String(v ?? ''); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
   return (bom ? '\ufeff' : '') + [CSV_COLS.map(c => c[1]).join(','), ...listOrders().filter(o => !o.test).map(o => CSV_COLS.map(([k]) => q(k === 'status' ? (STU[o.status] || o.status) : o[k])).join(','))].join('\n');
 }
-const STU = { awaiting_payment: 'Чекає оплату', queued: 'У черзі', rendering: 'Рендер', review: 'На перевірці', sent: 'Надіслано', failed: 'Помилка', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' };
+const STU = { awaiting_payment: 'Чекає оплату', hold: 'Чекає вашого OK', queued: 'У черзі', rendering: 'Рендер', review: 'На перевірці', sent: 'Надіслано', failed: 'Помилка', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' };
 function adminPage(q = '', st = '') {
   const everything = listOrders(), all = everything.filter(o => !o.test), day = new Date().toISOString().slice(0, 10), wk = Date.now() - 7 * 864e5;
   const cnt = (f) => all.filter(f).length, money = all.reduce((a, o) => a + (Number(o.amount) || 0), 0);
@@ -343,22 +358,32 @@ function adminPage(q = '', st = '') {
   const list = everything.filter(o => (!st || o.status === st) && (!ql || [o.no, o.id, o.childName, o.nameInput, o.email].some(v => String(v || '').toLowerCase().includes(ql))));
   const opts = ['', ...Object.keys(STU)].map(k => `<option value="${k}"${k === st ? ' selected' : ''}>${k ? STU[k] : 'Усі статуси'}</option>`).join('');
   const rows = list.slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(STU[o.status] || o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span>${o.test ? ' <span class="tag" style="color:var(--gold)">ТЕСТ</span>' : ''}${o.retryOf ? ` <span class="muted">повтор після ${esc(o.retryOf)}</span>` : ''}${o.retriedAs ? ` <span class="muted">→ ${esc(o.retriedAs)}</span>` : ''} <span class="muted">${esc(o.email)} · ${esc(o.createdAt.slice(0, 16).replace('T', ' '))} · ${esc(o.lang)}</span>
-${o.nameInput && o.nameInput !== o.childName ? `<p class="muted">Введено: ${esc(o.nameInput)}</p>` : ''}${o.nameCheck?.length ? `<p class="muted">Ім'я перевірити: ${esc(o.nameCheck.join(', '))}</p>` : ''}
+${o.nameInput && o.nameInput !== o.childName ? `<p class="muted">Введено: ${esc(o.nameInput)}</p>` : ''}${o.nameCheck?.length ? `<p class="muted">Ім'я перевірити: ${esc(o.nameCheck.map(agents.label).join(', '))}</p>` : ''}
 ${o.amount ? `<p class="muted">Оплата: ${esc(String(o.amount))} ${esc(o.payMethod || '')} · ${esc((o.paidAt || '').slice(0, 16).replace('T', ' '))}</p>` : ''}
-${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження: ${esc(o.result.reviewReasons.join(', '))}</p>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
+${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження рендеру: ${esc(o.result.reviewReasons.map(agents.label).join(', '))}</p>` : ''}${o.check ? `<p class="${o.check.ok || o.checkOk ? 'muted' : 'warn'}">Контроль замовлення: ${o.check.ok ? '✓ усе гаразд' : esc(o.check.problems.map(agents.label).join(', '))}${o.checkOk && !o.check.ok ? ' (ви дали OK)' : ''}${o.check.notes?.length ? ` · ${esc(o.check.notes.map(agents.label).join(', '))}` : ''}</p>` : ''}
+${o.qc ? `<details${agents.qcFails(o.qc).length ? ' open' : ''}><summary class="${agents.qcFails(o.qc).length ? 'warn' : 'muted'}">Перевірка відео: ${agents.qcFails(o.qc).length ? '⚠️ є зауваження (' + agents.qcFails(o.qc).length + ')' : '✓ усе гаразд'}</summary><ul class="qc">${o.qc.checks.map(c => `<li>${c.ok ? '✓' : '✗'} ${esc(c.label)} <span class="muted">${esc(c.detail || '')}</span></li>`).join('')}</ul></details>
+<div class="qcf">${Object.keys(o.qc.frames || {}).map(k => `<figure><img loading="lazy" src="/admin/f/${o.id}/${k}.jpg" alt=""><figcaption class="muted">${k === 'book' ? 'Книга' : 'Портрет'}</figcaption></figure>`).join('')}</div>` : ''}${o.error ? `<p class="muted">Помилка: ${esc(o.error.slice(0, 400))}</p>` : ''}
 ${o.video && fs.existsSync(path.join(odir(o.id), o.video)) ? `<video controls preload="none" src="/admin/v/${o.id}.mp4"></video>` : ''}
-<p>${o.status === 'awaiting_payment' ? `<form method="post" action="/admin/${o.id}/paid" class="pay"><input name="amount" inputmode="decimal" placeholder="Сума" size="7"><select name="method"><option>картка</option><option>переказ</option><option>готівка</option><option>інше</option></select><button class="b">Оплачено → у чергу</button></form> ` : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
+<p>${o.status === 'hold' ? btn(o, 'okcheck', 'OK → у рендер') : ''}${o.status === 'awaiting_payment' ? `<form method="post" action="/admin/${o.id}/paid" class="pay"><input name="amount" inputmode="decimal" placeholder="Сума" size="7"><select name="method"><option>картка</option><option>переказ</option><option>готівка</option><option>інше</option></select><button class="b">Оплачено → у чергу</button></form> ` : ''}${['review', 'sent'].includes(o.status) ? btn(o, 'approve', o.status === 'sent' ? 'Надіслати ще раз' : 'Підтвердити і надіслати') : ''}
 ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Перерендерити') : ''}${o.status !== 'rejected' ? btn(o, 'reject', 'Скасувати') : ''}
 <a class="muted" href="/o/${o.id}/${o.key}">сторінка клієнта</a></p>
 <form method="post" action="/admin/${o.id}/note" class="note"><input name="note" maxlength="500" placeholder="Нотатка до замовлення" value="${esc(o.note || '')}"><button class="b ghost">Зберегти</button></form>
 <details><summary class="muted">Історія (${(o.log || []).length})</summary><pre class="muted" style="white-space:pre-wrap">${esc((o.log || []).join('\n'))}</pre></details></div>`).join('');
   return page('Адмінка', `<style>.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0 0 18px}.kpi{background:#173328;border:1px solid var(--line);border-radius:14px;padding:12px}.kpi b{display:block;font-size:24px;color:var(--gold)}
 .flt{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}input,select{font:15px system-ui,sans-serif;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0e211a;color:var(--ink)}.flt input{flex:1;min-width:200px}
-.note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}</style>
+.note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}
+.warn{color:#ffb4a8;font-size:14px}.probs{border-color:var(--red);background:linear-gradient(180deg,#3a1d1b,#2a1614)}.probs ul{margin:6px 0 0;padding-left:20px}.okbox{color:var(--mut);font-size:14px;margin:0 0 14px}
+.qc{margin:6px 0;padding-left:18px;font-size:14px}.qcf{display:flex;gap:10px;flex-wrap:wrap}.qcf figure{margin:0;flex:1;min-width:200px;max-width:420px}.qcf img{width:100%;max-height:300px;object-fit:contain;border-radius:10px;display:block}</style>
 <header class="top"><span class="logo">✳ Čestitam · CRM</span><span><form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a></span></header>
-<div class="kpis">${tiles}</div>
+${problemsBox(everything)}<div class="kpis">${tiles}</div>
 <form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
 <p class="muted">Знайдено: ${list.length}. Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Нічого не знайдено.</p>'}`);
+}
+function problemsBox(orders) {   // зведення агентів: усе, що потребує вашої уваги
+  const pr = agents.problemsNow(orders, DATA), w = agents.watchdogState(DATA);
+  if (!pr.length) return `<p class="okbox">✓ Проблем немає. Сторож сервера: ${w ? `перевірка ${w.ageMin} хв тому` : '—'}. Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p>`;
+  return `<section class="card probs"><b>⚠️ Проблеми (${pr.length})</b><ul>${pr.map(x => `<li>${x.o ? `<a href="/admin?q=${esc(x.o.no || x.o.id)}">№ ${esc(x.o.no || '')} ${esc(x.o.childName)}</a>: ` : ''}${esc(x.text)}</li>`).join('')}</ul>
+<p class="muted">Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p></section>`;
 }
 const btn = (o, act, label) => `<form method="post" action="/admin/${o.id}/${act}"><button class="b">${label}</button></form> `;
 
@@ -382,7 +407,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') return send(res, 204, '');
     const u = new URL(req.url, PUBLIC_URL), p = u.pathname;
 
-    if (req.method === 'GET' && p === '/health') return send(res, 200, { ok: true, busy, queued: listOrders().filter(o => o.status === 'queued' && !o.test).length });
+    if (req.method === 'GET' && p === '/health') {   // для сторожа: чи не завис рендер / черга (без особистих даних)
+      const all = listOrders().filter(o => !o.test), now = Date.now();
+      const q = all.filter(o => o.status === 'queued'), rnd = all.find(o => o.status === 'rendering');
+      const renderMin = rnd ? Math.round((now - Date.parse(rnd.updatedAt)) / 60e3) : 0;
+      const waitMin = q.length ? Math.round((now - Math.min(...q.map(o => Date.parse(o.paidAt || o.updatedAt)))) / 60e3) : 0;
+      return send(res, 200, { ok: true, busy, queued: q.length, renderMin, waitMin, hold: all.filter(o => o.status === 'hold').length });
+    }
 
     if (req.method === 'POST' && p === '/api/orders') {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
@@ -478,8 +509,13 @@ const server = http.createServer(async (req, res) => {
         o.note = String(f.get('note') || '').slice(0, 500); log(o, 'нотатка: ' + o.note); save(o);
         return send(res, 303, '', { Location: '/admin?q=' + (o.no || o.id) });
       }
+      if ((mm = /^\/admin\/f\/([\w-]+)\/(book|portrait)\.jpg$/.exec(p))) {   // кадри перевірки відео
+        const o = load(mm[1]); const f = o && path.join(odir(o.id), 'out', `qc_${mm[2]}.jpg`);
+        if (!f || !fs.existsSync(f)) return send(res, 404, {});
+        return send(res, 200, fs.readFileSync(f), { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, no-store' });
+      }
       if ((mm = /^\/admin\/v\/([\w-]+)\.mp4$/.exec(p))) { const o = load(mm[1]); return o ? streamFile(req, res, path.join(odir(o.id), o.video || 'x')) : send(res, 404, {}); }
-      if ((mm = /^\/admin\/([\w-]+)\/(paid|approve|rerender|reject)$/.exec(p)) && req.method === 'POST') {
+      if ((mm = /^\/admin\/([\w-]+)\/(paid|approve|rerender|reject|okcheck)$/.exec(p)) && req.method === 'POST') {
         const o = load(mm[1]); if (!o) return send(res, 404, {});
         const act = mm[2];
         if (act === 'paid') { const f = new URLSearchParams((await readBody(req, 2000)).toString('utf8'));
@@ -488,6 +524,7 @@ const server = http.createServer(async (req, res) => {
         if (act === 'approve') { o.status = 'sent'; o.sentAt = new Date().toISOString(); await emailCustomer(o); }
         if (act === 'rerender') { o.status = 'queued'; o.attempts = 0; delete o.error; }
         if (act === 'reject') o.status = 'rejected';
+        if (act === 'okcheck' && o.status === 'hold') { o.checkOk = true; o.status = 'queued'; }
         log(o, 'адмін: ' + act + (act === 'paid' && o.amount ? ` ${o.amount} ${o.payMethod}` : '')); save(o); setImmediate(tick);
         return send(res, 303, '', { Location: '/admin' });
       }
