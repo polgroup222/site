@@ -77,8 +77,11 @@ function reportFeed(dataDir, orders, dayReq) {
 }
 
 // ---------- Google-таблиця оплачених замовлень ----------
-const sheetRow = (o) => ({ no: o.no, createdAt: o.createdAt, paidAt: o.paidAt || '', childName: o.childName, email: o.email || '', lang: o.lang,
-  amount: o.amount ?? '', payMethod: o.payMethod || '', status: STU[o.status] || o.status, sentAt: o.sentAt || '', note: o.note || '' });
+// значення, що починаються з = + - @, Google-таблиця вважає формулою (через неї можна витягнути дані): ставимо ' попереду
+const cell = (v) => typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? "'" + v : v;
+const sheetRow = (o) => Object.fromEntries(Object.entries({ no: o.no, createdAt: o.createdAt, paidAt: o.paidAt || '', childName: o.childName, email: o.email || '', lang: o.lang,
+  amount: o.amount ?? '', payMethod: o.payMethod || '', status: STU[o.status] || o.status, sentAt: o.sentAt || '', note: o.note || '',
+  phone: o.phone ? '+' + o.phone : '' }).map(([k, v]) => [k, cell(v)]));   // телефон +381… теж як текст
 const sheetSeen = new Map();   // no -> останній надісланий рядок, щоб не слати те саме
 async function sheetPush(rows, event) {
   if (!ENV.SHEET_WEBHOOK || !rows.length) return { ok: false, skipped: true };

@@ -95,9 +95,14 @@ if new_bad or fixed:
             for k in sorted(fixed): f.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'agent': 'watchdog', 'ok': True, 'msg': f"полагоджено: {by[k]['label']}"}, ensure_ascii=False) + '\n')
     except OSError as e: print('log error', e)
 
+def same_owner(p):   # сервіс у контейнері працює не від root: файли, які пише сторож, віддаємо тому ж власнику, що й папка runtime
+    try: st = os.stat(os.path.join(SVC, 'runtime')); os.chown(p, st.st_uid, st.st_gid)
+    except OSError: pass
+for p in sorted(glob.glob(os.path.join(SVC, 'runtime', 'logs', '*.jsonl')))[-3:]: same_owner(p)
+
 ts = datetime.now(timezone.utc).isoformat(timespec='seconds')
 state = {'ts': ts, 'checks': checks, 'bad': sorted(now_bad if sent else was_bad)}   # якщо Telegram не дійшов — повторимо наступного разу
 os.makedirs(os.path.dirname(STATE), exist_ok=True)
 with open(STATE + '.tmp', 'w', encoding='utf-8') as f: json.dump(state, f, ensure_ascii=False, indent=1)
-os.replace(STATE + '.tmp', STATE)
+os.replace(STATE + '.tmp', STATE); same_owner(STATE)
 print(ts, 'OK' if not now_bad else 'BAD ' + ','.join(sorted(now_bad)), '| tg:', 'sent' if msgs and sent else ('-' if not msgs else 'fail'))

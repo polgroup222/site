@@ -6,8 +6,8 @@
 // 4. Скопіюйте URL веб-застосунку (…/exec) і впишіть у /root/site/service/.env:  SHEET_WEBHOOK=…/exec  і  SHEET_SECRET=…
 // Рядок замовлення оновлюється за номером (статус, дата відправки, нотатка); нових рядків-дублів не буде. Нічого не видаляється.
 const SECRET = 'ВПИШІТЬ_СВІЙ_ПАРОЛЬ';
-const HEAD = ['Номер', 'Створено', 'Оплачено', "Ім'я дитини", 'Email', 'Мова', 'Сума', 'Оплата', 'Статус', 'Надіслано', 'Нотатка', 'Оновлено'];
-const KEYS = ['no', 'createdAt', 'paidAt', 'childName', 'email', 'lang', 'amount', 'payMethod', 'status', 'sentAt', 'note'];
+const HEAD = ['Номер', 'Створено', 'Оплачено', "Ім'я дитини", 'Email', 'Мова', 'Сума', 'Оплата', 'Статус', 'Надіслано', 'Нотатка', 'Телефон', 'Оновлено'];
+const KEYS = ['no', 'createdAt', 'paidAt', 'childName', 'email', 'lang', 'amount', 'payMethod', 'status', 'sentAt', 'note', 'phone'];
 
 function doPost(e) {
   const body = JSON.parse(e.postData.contents || '{}');
@@ -18,7 +18,9 @@ function doPost(e) {
     if (sh.getLastRow() === 0) { sh.appendRow(HEAD); sh.setFrozenRows(1); sh.getRange(1, 1, 1, HEAD.length).setFontWeight('bold'); }
     const n = Math.max(0, sh.getLastRow() - 1);
     const nos = n ? sh.getRange(2, 1, n, 1).getValues().map(r => String(r[0])) : [];
-    const fmt = (k, v) => (/At$/.test(k) && v) ? Utilities.formatDate(new Date(v), 'Europe/Kiev', 'yyyy-MM-dd HH:mm') : v;
+    // текст, що починається з = + - @, записуємо як текст, а не формулу
+    const safe = (v) => typeof v === 'string' && /^[=+\-@]/.test(v) ? "'" + v : v;
+    const fmt = (k, v) => (/At$/.test(k) && v) ? Utilities.formatDate(new Date(v), 'Europe/Kiev', 'yyyy-MM-dd HH:mm') : safe(v);
     for (const r of body.rows || []) {
       const row = KEYS.map(k => fmt(k, r[k] ?? '')).concat([Utilities.formatDate(new Date(), 'Europe/Kiev', 'yyyy-MM-dd HH:mm')]);
       const i = nos.indexOf(String(r.no));
