@@ -86,6 +86,15 @@ if new_bad: msgs.append('🚨 Čestitam: проблема на сервері\n'
 if fixed: msgs.append('✅ Čestitam: полагоджено\n' + '\n'.join(f"• {by[k]['label']}" for k in sorted(fixed)))
 sent = all(tg(m + f'\n{URL}/admin') for m in msgs) if msgs else True
 
+# подія для стрічки «Агенти» в адмінці (лише зміни стану)
+if new_bad or fixed:
+    try:
+        d = os.path.join(SVC, 'runtime', 'logs'); os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, datetime.now(timezone.utc).strftime('%Y-%m-%d') + '.jsonl'), 'a', encoding='utf-8') as f:
+            for k in sorted(new_bad): f.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'agent': 'watchdog', 'ok': False, 'msg': f"тривога: {by[k]['label']} ({by[k]['detail']})"}, ensure_ascii=False) + '\n')
+            for k in sorted(fixed): f.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'agent': 'watchdog', 'ok': True, 'msg': f"полагоджено: {by[k]['label']}"}, ensure_ascii=False) + '\n')
+    except OSError as e: print('log error', e)
+
 ts = datetime.now(timezone.utc).isoformat(timespec='seconds')
 state = {'ts': ts, 'checks': checks, 'bad': sorted(now_bad if sent else was_bad)}   # якщо Telegram не дійшов — повторимо наступного разу
 os.makedirs(os.path.dirname(STATE), exist_ok=True)

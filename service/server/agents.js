@@ -99,7 +99,7 @@ function problemsNow(orders, dataDir) {
 
 // ---------- ранкова зведення о 08:00 (час власника) ----------
 const TZ = ENV.OWNER_TZ || 'Europe/Kiev';
-const localParts = (d = new Date()) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' })
+const localParts = (d = new Date()) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   .formatToParts(d).map(x => [x.type, x.value]));
 function morningText(orders, dataDir, publicUrl) {
   const all = orders.filter(o => !o.test), dayAgo = Date.now() - 864e5;
@@ -132,4 +132,52 @@ function startMorning({ listOrders, dataDir, publicUrl }) {
   }, 60e3);
 }
 
-module.exports = { checkOrder, checkVideo, qcFails, problemsNow, watchdogState, morningText, startMorning, tg, label };
+
+// ---------- стрічка для сторінки «Агенти» ----------
+function readEvents(dataDir, days = 3) {
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+    let txt = ''; try { txt = fs.readFileSync(path.join(dataDir, 'logs', d + '.jsonl'), 'utf8'); } catch { continue; }
+    for (const line of txt.split('\n')) { if (!line.includes('"agent"')) continue; try { out.push(JSON.parse(line)); } catch {} }
+  }
+  return out;
+}
+const localDay = (d) => { const p = localParts(d); return `${p.year}-${p.month}-${p.day}`; };
+function agentsFeed({ dataDir, orders, now, busy, tg: tgOn }) {
+  const ev = readEvents(dataDir).filter(e => !e.test);
+  const today = localDay(new Date()), isToday = (e) => localDay(new Date(e.ts)) === today;
+  const of = (k) => ev.filter(e => e.agent === k);
+  const lastOf = (k) => of(k).slice(-1)[0] || null;
+  const hold = orders.filter(o => !o.test && o.status === 'hold');
+  const reviewBad = orders.filter(o => !o.test && o.status === 'review' && qcFails(o.qc).length);
+  const w = watchdogState(dataDir);
+  const wBad = (w?.checks || []).filter(c => !c.ok);
+  const text = (e) => e.msg;
+  const A = [];
+  const oT = of('orders').filter(isToday);
+  A.push({ key: 'orders', name: 'Контроль замовлень', icon: '🧾', role: 'Оплата, фото, ім’я — до рендеру',
+    state: now.orders ? 'working' : hold.length ? 'attention' : 'idle',
+    line: now.orders ? `Перевіряє замовлення ${now.orders.no} · ${now.orders.name}` : hold.length ? `Чекають вашого OK: ${hold.length}` : 'Чекає нових оплачених замовлень',
+    stats: [['Перевірено сьогодні', oT.filter(e => 'problems' in e).length], ['Затримано', oT.filter(e => e.hold).length]],
+    last: lastOf('orders') });
+  const vT = of('video').filter(isToday);
+  A.push({ key: 'video', name: 'Перевірка відео', icon: '🎬', role: 'Ім’я, книга, портрет, звук — до відправки',
+    state: now.video ? 'working' : reviewBad.length ? 'attention' : busy ? 'waiting' : 'idle',
+    line: now.video ? `Дивиться ролик ${now.video.no} · ${now.video.name}` : reviewBad.length ? `Ролики з зауваженнями: ${reviewBad.length}` : busy ? 'Чекає, поки закінчиться рендер' : 'Чекає готових роликів',
+    stats: [['Перевірено сьогодні', vT.length], ['З зауваженнями', vT.filter(e => !e.ok).length]],
+    last: lastOf('video') });
+  A.push({ key: 'watchdog', name: 'Сторож сервера', icon: '🛡️', role: 'Сайт, рендер, бекап, диск — кожні 10 хв',
+    state: !w || w.stale ? 'attention' : wBad.length ? 'attention' : 'idle',
+    line: !w ? 'Ще не запускався' : w.stale ? `Не звітує вже ${w.ageMin} хв` : wBad.length ? wBad.map(c => c.label).join(', ') + ': проблема' : `Усе гаразд · перевірка ${w.ageMin} хв тому`,
+    checks: (w?.checks || []).map(c => ({ ok: c.ok, label: c.label, detail: c.detail })),
+    stats: [['Перевірок сьогодні', w ? (() => { const p = localParts(); return Math.floor((Number(p.hour) * 60 + Number(p.minute)) / 10); })() : 0], ['Тривог сьогодні', of('watchdog').filter(isToday).filter(e => !e.ok).length]],
+    last: w ? { ts: w.ts, ok: !wBad.length, msg: wBad.length ? 'проблема: ' + wBad.map(c => c.label).join(', ') : 'усе гаразд' } : null });
+  const feed = ev.slice(-60).reverse().map(e => ({ ts: e.ts, agent: e.agent, ok: e.ok, text: text(e), no: e.no, name: e.name, order: e.order }));
+  if (w && !w.stale) feed.unshift({ ts: w.ts, agent: 'watchdog', ok: !wBad.length, text: wBad.length ? 'перевірив сервер: ' + wBad.map(c => c.label).join(', ') : 'перевірив сервер: усе гаразд', live: true });
+  const lv = [...of('video')].reverse().find(e => (e.frames || []).length);
+  return { now: new Date().toISOString(), tg: tgOn, agents: A, feed: feed.slice(0, 50),
+    frames: lv ? { order: lv.order, no: lv.no, name: lv.name, ok: lv.ok, ts: lv.ts, list: lv.frames } : null };
+}
+
+module.exports = { agentsFeed, checkOrder, checkVideo, qcFails, problemsNow, watchdogState, morningText, startMorning, tg, label };

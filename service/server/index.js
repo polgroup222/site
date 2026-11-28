@@ -7,6 +7,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { resolveName } = require('../src/names');
 const agents = require('./agents');
+const { agentsPage } = require('./agents-page');
 const { spawn } = require('child_process');
 // рендер у дочірньому процесі: сервер лишається чуйним, поки йде ffmpeg
 function renderInChild(job) {
@@ -64,8 +65,10 @@ function event(rec) {
   const ts = new Date().toISOString();
   try { fs.appendFileSync(path.join(LOGS, ts.slice(0, 10) + '.jsonl'), JSON.stringify({ ts, ...rec }) + '\n'); } catch (e) { console.error('log', e.message); }
 }
-const log = (o, msg) => { const ts = new Date().toISOString(); (o.log ||= []).push(`${ts} ${msg}`);
-  event({ order: o.id, name: o.childName, email: o.email, status: o.status, msg }); };
+const log = (o, msg, extra = {}) => { const ts = new Date().toISOString(); (o.log ||= []).push(`${ts} ${msg}`);
+  event({ order: o.id, no: o.no, name: o.childName, email: o.email, status: o.status, test: o.test || undefined, msg, ...extra }); };
+// що агенти роблять просто зараз (для сторінки /admin/agents)
+const NOW = { orders: null, video: null };
 
 // ---------- HTTP-допоміжні ----------
 function send(res, code, body, headers = {}) {
@@ -145,11 +148,13 @@ async function tick() {
   busy = true;
   // агент 1: контроль замовлення перед рендером (оплата, фото, ім'я); підозріле — чекає вашого «OK»
   if (!o.check || (o.paidAt && o.check.at < o.paidAt)) {
-    o.check = await agents.checkOrder(o, odir(o.id), { paymentMode: PAYMENT_MODE });
-    log(o, o.check.ok ? 'контроль замовлення: усе гаразд' : 'контроль замовлення: ' + o.check.problems.map(agents.label).join(', '));
+    NOW.orders = { no: o.no, name: o.childName, since: new Date().toISOString() };
+    try { o.check = await agents.checkOrder(o, odir(o.id), { paymentMode: PAYMENT_MODE }); } finally { NOW.orders = null; }
+    log(o, o.check.ok ? 'контроль замовлення: усе гаразд' : 'контроль замовлення: ' + o.check.problems.map(agents.label).join(', '),
+      { agent: 'orders', ok: o.check.ok, problems: o.check.problems });
   }
   if (!o.check.ok && !o.checkOk) {
-    o.status = 'hold'; log(o, 'чекає вашого OK перед рендером'); save(o);
+    o.status = 'hold'; log(o, 'чекає вашого OK перед рендером', { agent: 'orders', ok: false, hold: true }); save(o);
     notify(o, '⏸ Замовлення чекає вашого OK: ' + o.check.problems.map(agents.label).join(', '));
     busy = false; setImmediate(tick); return;
   }
@@ -163,10 +168,12 @@ async function tick() {
     for (const f of ['portrait_overlay.mkv']) fs.rmSync(path.join(odir(o.id), 'out', f), { force: true });
     log(o, `рендер готовий: ${r.status} ${r.reviewReasons.join(',')}`);
     // агент 2: перевірка готового відео проти мастера
-    o.qc = await agents.checkVideo({ masterJson: MASTER, masterVideo: ENV.MASTER_VIDEO || path.join(path.dirname(MASTER), JSON.parse(fs.readFileSync(MASTER, 'utf8')).video),
-      video: path.join(odir(o.id), o.video), outDir: path.join(odir(o.id), 'out'), voiceDur: r.voice?.dur });
+    NOW.video = { no: o.no, name: o.childName, since: new Date().toISOString() };
+    try { o.qc = await agents.checkVideo({ masterJson: MASTER, masterVideo: ENV.MASTER_VIDEO || path.join(path.dirname(MASTER), JSON.parse(fs.readFileSync(MASTER, 'utf8')).video),
+      video: path.join(odir(o.id), o.video), outDir: path.join(odir(o.id), 'out'), voiceDur: r.voice?.dur }); } finally { NOW.video = null; }
     const bad = agents.qcFails(o.qc);
-    log(o, bad.length ? 'перевірка відео: ' + bad.map(c => `${c.label} (${c.detail})`).join('; ') : 'перевірка відео: усе гаразд');
+    log(o, bad.length ? 'перевірка відео: ' + bad.map(c => `${c.label} (${c.detail})`).join('; ') : 'перевірка відео: усе гаразд',
+      { agent: 'video', ok: !bad.length, fails: bad.map(c => c.label), frames: Object.keys(o.qc.frames || {}), seconds: o.qc.seconds });
     if (r.status === 'done' && !bad.length && AUTO_SEND) { o.status = 'sent'; o.sentAt = new Date().toISOString(); await emailCustomer(o); }
     else { o.status = 'review'; notify(o, bad.length ? '🎬 Відео готове, але є зауваження: ' + bad.map(c => c.label).join(', ') : '🎬 Відео готове, перевірка пройдена ✓. Подивіться і підтвердіть'); }
   } catch (e) {
@@ -374,7 +381,7 @@ ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Пере
 .note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}
 .warn{color:#ffb4a8;font-size:14px}.probs{border-color:var(--red);background:linear-gradient(180deg,#3a1d1b,#2a1614)}.probs ul{margin:6px 0 0;padding-left:20px}.okbox{color:var(--mut);font-size:14px;margin:0 0 14px}
 .qc{margin:6px 0;padding-left:18px;font-size:14px}.qcf{display:flex;gap:10px;flex-wrap:wrap}.qcf figure{margin:0;flex:1;min-width:200px;max-width:420px}.qcf img{width:100%;max-height:300px;object-fit:contain;border-radius:10px;display:block}</style>
-<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a></span></header>
+<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><a class="b ghost" href="/admin/agents">🤖 Агенти</a> <form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a></span></header>
 ${problemsBox(everything)}<div class="kpis">${tiles}</div>
 <form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
 <p class="muted">Знайдено: ${list.length}. Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Нічого не знайдено.</p>'}`);
@@ -502,6 +509,8 @@ const server = http.createServer(async (req, res) => {
         log(o, 'створено тестове замовлення з адмінки'); save(o);
         return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
       }
+      if (p === '/admin/agents' && req.method === 'GET') return send(res, 200, agentsPage(), { 'Cache-Control': 'no-store' });
+      if (p === '/admin/agents.json' && req.method === 'GET') return send(res, 200, agents.agentsFeed({ dataDir: DATA, orders: listOrders(), now: NOW, busy, tg: !!(ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID) }), { 'Cache-Control': 'no-store' });
       if (p === '/admin/export.csv') { event({ msg: 'адмін: експорт CSV' }); return send(res, 200, ordersCsv(), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="zamovlennya.csv"', 'Cache-Control': 'no-store' }); }
       if ((mm = /^\/admin\/([\w-]+)\/note$/.exec(p)) && req.method === 'POST') {
         const o = load(mm[1]); if (!o) return send(res, 404, {});
@@ -524,7 +533,7 @@ const server = http.createServer(async (req, res) => {
         if (act === 'approve') { o.status = 'sent'; o.sentAt = new Date().toISOString(); await emailCustomer(o); }
         if (act === 'rerender') { o.status = 'queued'; o.attempts = 0; delete o.error; }
         if (act === 'reject') o.status = 'rejected';
-        if (act === 'okcheck' && o.status === 'hold') { o.checkOk = true; o.status = 'queued'; }
+        if (act === 'okcheck' && o.status === 'hold') { o.checkOk = true; o.status = 'queued'; event({ order: o.id, no: o.no, name: o.childName, agent: 'orders', ok: true, msg: 'ви дали OK, замовлення пішло в рендер' }); }
         log(o, 'адмін: ' + act + (act === 'paid' && o.amount ? ` ${o.amount} ${o.payMethod}` : '')); save(o); setImmediate(tick);
         return send(res, 303, '', { Location: '/admin' });
       }
