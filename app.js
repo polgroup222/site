@@ -16,11 +16,12 @@ const T = {
   fName: 'Ime deteta', fNameHint: 'Kako ga zovete kod kuće, na latinici. Na primer: Milica, Luka, Đorđe.',
   fPhoto: 'Fotografija deteta', fPhotoBtn: 'Izaberite fotografiju', fPhotoChange: 'Promeni fotografiju',
   fPhotoHint: 'Lice izbliza, gleda u kameru, dobro osvetljeno. Bez naočara za sunce i bez drugih ljudi na slici.',
-  fEmail: 'Vaš email (po želji)', fEmailHint: 'Video će biti spreman ovde, na stranici vaše porudžbine. Želite li da vam link stigne i na email? Upišite adresu, i sa njom ćete uvek moći da otvorite porudžbinu.',
+  fPhone: 'Vaš broj telefona', fPhoneHint: 'Sa ovim brojem i brojem porudžbine uvek možete otvoriti stranicu porudžbine na „Moja porudžbina“.',
+  fEmail: 'Vaš email', fEmailHint: 'Na ovu adresu šaljemo link do gotovog videa. Video je uvek i ovde, na stranici vaše porudžbine.',
   consent: 'Roditelj sam ili staratelj i slažem se sa <a href="privacy.html">pravilima privatnosti</a>.',
   send: 'Pošalji porudžbinu', sending: 'Šaljemo…', payNote: 'Posle slanja otvara se stranica vaše porudžbine sa plaćanjem. Izrada počinje odmah posle uplate.',
-  ok: 'Porudžbina je primljena. Status i gotov video su na vašoj stranici:', open: 'Otvori stranicu porudžbine', noMsg: 'Broj vaše porudžbine:', noKeep: 'Sačuvajte ga: sa njim i emailom uvek možete otvoriti stranicu na „Moja porudžbina“.',
-  eName: 'Upišite ime deteta latinicom.', ePhoto: 'Dodajte fotografiju (JPG, PNG ili HEIC, do 30 MB).', eEmail: 'Proverite email adresu.', eConsent: 'Potvrdite saglasnost sa pravilima privatnosti.',
+  ok: 'Porudžbina je primljena. Status i gotov video su na vašoj stranici:', open: 'Otvori stranicu porudžbine', noMsg: 'Broj vaše porudžbine:', noKeep: 'Sačuvajte ga: sa njim i brojem telefona uvek možete otvoriti stranicu na „Moja porudžbina“.',
+  eName: 'Upišite ime deteta latinicom.', ePhoto: 'Dodajte fotografiju (JPG, PNG ili HEIC, do 30 MB).', eEmail: 'Proverite email adresu.', ePhone: 'Upišite broj telefona, na primer +381 64 123 4567.', eConsent: 'Potvrdite saglasnost sa pravilima privatnosti.',
   eMany: 'Previše pokušaja. Pokušajte ponovo za 10 minuta.', eNet: 'Porudžbina nije poslata. Proverite internet i pokušajte ponovo.', eOff: 'Porudžbine trenutno nisu otvorene.',
   faqTitle: 'Pitanja', q1: 'Koliko se čeka na video?', a1: 'Obično 15 do 30 minuta posle uplate. U danima pred Novu godinu može potrajati do nekoliko sati.',
   q2: 'Šta ako ime deteta nije uobičajeno?', a2: 'Svako ime proveravamo ručno pre slanja. Ako izgovor nije dobar, ispravićemo ga ili ćemo vam se javiti.',
@@ -43,11 +44,12 @@ uk: {
   fName: 'Ім’я дитини', fNameHint: 'Латиницею, як кличете вдома. Дід Мороз говорить сербською: Milica, Luka, Đorđe.',
   fPhoto: 'Фото дитини', fPhotoBtn: 'Обрати фото', fPhotoChange: 'Змінити фото',
   fPhotoHint: 'Обличчя крупним планом, дивиться в камеру, гарне світло. Без сонцезахисних окулярів та інших людей у кадрі.',
-  fEmail: 'Ваш email (за бажанням)', fEmailHint: 'Відео буде готове тут, на сторінці вашого замовлення. Бажаєте отримати посилання ще й на пошту? Вкажіть адресу, і з нею ви завжди зможете відкрити замовлення.',
+  fPhone: 'Ваш номер телефону', fPhoneHint: 'З цим номером і номером замовлення ви завжди відкриєте сторінку в розділі «Моє замовлення».',
+  fEmail: 'Ваш email', fEmailHint: 'На цю адресу надішлемо посилання на готове відео. Відео завжди є й тут, на сторінці вашого замовлення.',
   consent: 'Я батько, мати чи опікун і погоджуюся з <a href="privacy.html">правилами конфіденційності</a>.',
   send: 'Надіслати замовлення', sending: 'Надсилаємо…', payNote: 'Після надсилання відкриється сторінка вашого замовлення з оплатою. Створення починається одразу після оплати.',
-  ok: 'Замовлення прийнято. Статус і готове відео будуть на вашій сторінці:', open: 'Відкрити сторінку замовлення', noMsg: 'Номер вашого замовлення:', noKeep: 'Збережіть його: з ним і email ви завжди відкриєте сторінку в розділі «Моє замовлення».',
-  eName: 'Впишіть ім’я дитини латиницею.', ePhoto: 'Додайте фото (JPG, PNG або HEIC, до 30 МБ).', eEmail: 'Перевірте адресу email.', eConsent: 'Підтвердьте згоду з правилами конфіденційності.',
+  ok: 'Замовлення прийнято. Статус і готове відео будуть на вашій сторінці:', open: 'Відкрити сторінку замовлення', noMsg: 'Номер вашого замовлення:', noKeep: 'Збережіть його: з ним і номером телефону ви завжди відкриєте сторінку в розділі «Моє замовлення».',
+  eName: 'Впишіть ім’я дитини латиницею.', ePhoto: 'Додайте фото (JPG, PNG або HEIC, до 30 МБ).', eEmail: 'Перевірте адресу email.', ePhone: 'Вкажіть номер телефону, наприклад +381 64 123 4567.', eConsent: 'Підтвердьте згоду з правилами конфіденційності.',
   eMany: 'Забагато спроб. Спробуйте ще раз за 10 хвилин.', eNet: 'Замовлення не надіслано. Перевірте інтернет і спробуйте ще раз.', eOff: 'Замовлення зараз не приймаються.',
   faqTitle: 'Запитання', q1: 'Скільки чекати на відео?', a1: 'Зазвичай 15–30 хвилин після оплати. Перед Новим роком може знадобитися кілька годин.',
   q2: 'А якщо ім’я незвичне?', a2: 'Кожне ім’я ми перевіряємо вручну перед відправкою. Якщо вимова не вдалася, виправимо або напишемо вам.',
@@ -139,19 +141,20 @@ const say = (msg, err, field) => {
 };
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const f = new FormData(form), name = String(f.get('name') || '').trim(), email = String(f.get('email') || '').trim(), file = fPhoto.files[0];
+  const f = new FormData(form), name = String(f.get('name') || '').trim(), email = String(f.get('email') || '').trim(), phone = String(f.get('phone') || '').trim(), file = fPhoto.files[0];
   if (!/^[A-Za-zČĆĐŠŽčćđšž' -]{2,30}$/.test(name)) return say(t().eName, 1, fName);
   if (!file || file.size > 30e6) return say(t().ePhoto, 1, fPhoto);
-  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t().eEmail, 1, form.email);
+  if (!/^\+?[\d\s()\/.-]{8,20}$/.test(phone) || phone.replace(/\D/g, '').length < 8) return say(t().ePhone, 1, form.phone);
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) return say(t().eEmail, 1, form.email);
   if (!form.consent.checked) return say(t().eConsent, 1, form.consent);
   if (!api) return say(t().eOff, 1);
   const btn = form.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = t().sending;
   try {
     const photo = await shrink(file).catch(() => file.size <= 12e6 ? new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => no(Object.assign(new Error(), { code: 'photo' })); fr.readAsDataURL(file); })
       : Promise.reject(Object.assign(new Error(), { code: 'photo' })));
-    const r = await fetch(`${api}/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, lang, photo }) });
+    const r = await fetch(`${api}/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, email, lang, photo }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { const m = { name: [t().eName, fName], photo: [t().ePhoto, fPhoto], email: [t().eEmail, form.email], too_many: [t().eMany] }[j.error] || [t().eNet]; return say(m[0], 1, m[1]); }
+    if (!r.ok) { const m = { name: [t().eName, fName], photo: [t().ePhoto, fPhoto], email: [t().eEmail, form.email], phone: [t().ePhone, form.phone], too_many: [t().eMany] }[j.error] || [t().eNet]; return say(m[0], 1, m[1]); }
     out.className = 'result'; out.textContent = t().ok + ' '; const a = document.createElement('a'); a.href = j.url; a.textContent = t().open; a.rel = 'noopener'; out.append(a);
     if (j.no) { const p = document.createElement('p'), b = document.createElement('b'); b.textContent = j.no; p.append(t().noMsg + ' ', b, ' ' + t().noKeep); out.append(p); }
     out.hidden = false;

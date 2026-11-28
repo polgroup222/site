@@ -33,6 +33,11 @@ const ORDERS = path.join(DATA, 'orders');
 const MASTER = ENV.MASTER_JSON || path.join(__dirname, '..', 'master', 'master.json');
 const PUBLIC_URL = (ENV.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const ADMIN_TOKEN = ENV.ADMIN_TOKEN || '';
+// у .env можна тримати не сам токен, а лише його хеш: ADMIN_TOKEN_SHA256 (64 hex). Тоді навіть із копії .env токен не дізнатися.
+const ADMIN_HASH = /^[a-f0-9]{64}$/i.test(ENV.ADMIN_TOKEN_SHA256 || '') ? ENV.ADMIN_TOKEN_SHA256.toLowerCase()
+  : ADMIN_TOKEN.length >= 24 ? crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex') : '';
+// адреса входу в адмінку прихована: ADMIN_LOGIN_PATH=/admin/<щось-своє>. Без входу всі /admin… відповідають «не знайдено».
+const LOGIN_PATH = /^\/admin\/[\w-]{4,64}$/.test(ENV.ADMIN_LOGIN_PATH || '') ? ENV.ADMIN_LOGIN_PATH : '/admin/login';
 const ORIGINS = (ENV.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const PAYMENT_MODE = ENV.PAYMENT_MODE || 'manual';      // manual: адмін позначає «оплачено»; none: одразу в чергу
 const AUTO_SEND = ENV.AUTO_SEND === '1';                 // 1: ролик без зауважень іде клієнту без ручної перевірки
@@ -41,7 +46,7 @@ const KEEP_PHOTO_DAYS = Number(ENV.KEEP_PHOTO_DAYS || 30);   // фото дит�
 const KEEP_VIDEO_DAYS = Number(ENV.KEEP_VIDEO_DAYS || 60);   // відео — через N днів
 const AVG_RENDER_MIN = 8;
 fs.mkdirSync(ORDERS, { recursive: true });
-if (!ADMIN_TOKEN) console.warn('[warn] ADMIN_TOKEN не задано: адмінка вимкнена');
+if (!ADMIN_HASH) console.warn('[warn] ADMIN_TOKEN (від 24 символів) або ADMIN_TOKEN_SHA256 не задано: адмінка вимкнена');
 
 // ---------- сховище ----------
 const odir = (id) => path.join(ORDERS, id);
@@ -75,7 +80,14 @@ const NOW = { orders: null, video: null };
 // ---------- HTTP-допоміжні ----------
 function send(res, code, body, headers = {}) {
   const isBuf = Buffer.isBuffer(body), isStr = typeof body === 'string';
-  res.writeHead(code, { 'Content-Type': isStr ? 'text/html; charset=utf-8' : 'application/json', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', ...headers });
+  const sec = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Cross-Origin-Opener-Policy': 'same-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()' };
+  if (isStr && body.startsWith('<!doctype')) {   // HTML: скрипти лише з разовим nonce, без чужих доменів, без вбудовування в iframe
+    const n = crypto.randomBytes(16).toString('base64');
+    body = body.replace(/<script nonce="r">/g, `<script nonce="${n}">`).replace(/<script>/g, `<script nonce="${n}">`);
+    sec['Content-Security-Policy'] = `default-src 'self'; script-src 'self' 'nonce-${n}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'`;
+  }
+  res.writeHead(code, { 'Content-Type': isStr ? 'text/html; charset=utf-8' : 'application/json', ...sec, ...headers });
   res.end(isBuf || isStr ? body : JSON.stringify(body));
 }
 function cors(req, res) {
@@ -96,9 +108,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const h = (v) => crypto.createHash('sha256').update(v).digest('hex');
 const safeEq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 function isAdmin(req) {
-  if (!ADMIN_TOKEN) return false;
+  if (!ADMIN_HASH) return false;
   const c = (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith('adm='));
-  return !!c && safeEq(c.slice(4), crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex'));
+  const s = c && /^[a-f0-9]{64}$/.test(c.slice(4)) && SESS[h(c.slice(4))];
+  return !!s && s.exp > Date.now();
 }
 // простий ліміт: 5 замовлень на IP за 10 хв
 const hits = new Map();
@@ -107,10 +120,33 @@ function rateLimited(ip) {
   arr.push(now); hits.set(ip, arr); return arr.length > 5;
 }
 const loginHits = new Map();
+const failDay = new Map(); setInterval(() => failDay.clear(), 864e5).unref();   // невдалі входи за добу на телефон/email
 function loginLimited(k) {   // не більше 5 спроб за 10 хв на IP і окремо на email
   const now = Date.now(), arr = (loginHits.get(k) || []).filter(t => now - t < 600e3);
-  arr.push(now); loginHits.set(k, arr); if (loginHits.size > 5000) loginHits.clear(); return arr.length > 5;
+  arr.push(now); loginHits.set(k, arr); return arr.length > 5;
 }
+// телефон: лише цифри у міжнародному вигляді (381641234567). 06x… → Сербія (+381), 00… → міжнародний
+function normPhone(v) {
+  let d = String(v || '').replace(/[^\d+]/g, '');
+  if (d.startsWith('+')) d = d.slice(1); else if (d.startsWith('00')) d = d.slice(2); else if (d.startsWith('0')) d = '381' + d.slice(1);
+  d = d.replace(/\D/g, '');
+  return /^[1-9]\d{7,14}$/.test(d) ? d : '';
+}
+const showPhone = (d) => d ? '+' + d : '';
+// чистимо старі записи лімітів, щоб памʼять не росла
+setInterval(() => { const now = Date.now();
+  for (const m of [hits, loginHits, adminHits]) for (const [k, arr] of m) if (!arr.some(t => now - t < 864e5)) m.delete(k); }, 600e3).unref();
+const adminHits = new Map();
+function adminLimited(ip) { const now = Date.now(), arr = (adminHits.get(ip) || []).filter(t => now - t < 3600e3); arr.push(now); adminHits.set(ip, arr); return arr.length > 10; }
+// сесії адмінки: випадковий ідентифікатор у cookie, на сервері зберігаємо лише його хеш (файл sessions.json)
+const SESS_FILE = path.join(DATA, 'admin_sessions.json'), SESS_DAYS = 30;
+let SESS = {}; try { SESS = JSON.parse(fs.readFileSync(SESS_FILE, 'utf8')); } catch {}
+const saveSess = () => { try { fs.writeFileSync(SESS_FILE + '.tmp', JSON.stringify(SESS), { mode: 0o600 }); fs.renameSync(SESS_FILE + '.tmp', SESS_FILE); } catch (e) { console.error('sessions', e.message); } };
+function newSession(ip) {
+  const now = Date.now(); for (const [k, v] of Object.entries(SESS)) if (v.exp < now) delete SESS[k];
+  const sid = crypto.randomBytes(32).toString('hex'); SESS[h(sid)] = { ip, at: new Date().toISOString(), exp: now + SESS_DAYS * 864e5 }; saveSess(); return sid;
+}
+const clientIp = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 function photoExt(buf) {
   if (buf[0] === 0xff && buf[1] === 0xd8) return 'jpg';
   if (buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
@@ -121,9 +157,9 @@ function photoExt(buf) {
 
 // ---------- лист клієнту (Resend, якщо є ключ) ----------
 const T = {
-  'sr-Latn': { subj: 'Vaša čestitka od Deda Mraza je spremna ✦', body: (n, u, no) => `Zdravo!\n\nČestitka za ${n} je spremna. Pogledajte i preuzmite je ovde:\n${u}\n\nBroj porudžbine: ${no}\nStranici možete pristupiti i preko cestitam.eu/porudzbina (email + broj porudžbine).\n\nSrećni praznici!\nČestitam · cestitam.eu` },
-  'sr-Cyrl': { subj: 'Ваша честитка од Деда Мраза је спремна ✦', body: (n, u, no) => `Здраво!\n\nЧеститка за ${n} је спремна. Погледајте и преузмите је овде:\n${u}\n\nБрој поруџбине: ${no}\nСтраници можете приступити и преко cestitam.eu/porudzbina (email + број поруџбине).\n\nСрећни празници!\nЧеститам · cestitam.eu` },
-  uk: { subj: 'Ваше відеопривітання готове ✦', body: (n, u, no) => `Вітаємо!\n\nПривітання для ${n} готове. Переглянути і завантажити:\n${u}\n\nНомер замовлення: ${no}\nСторінку можна відкрити й через cestitam.eu/porudzbina (email + номер замовлення).\n\nЗі святами!\nČestitam · cestitam.eu` },
+  'sr-Latn': { subj: 'Vaša čestitka od Deda Mraza je spremna ✦', body: (n, u, no) => `Zdravo!\n\nČestitka za ${n} je spremna. Pogledajte i preuzmite je ovde:\n${u}\n\nBroj porudžbine: ${no}\nStranici možete pristupiti i preko cestitam.eu/porudzbina (telefon ili email + broj porudžbine).\n\nSrećni praznici!\nČestitam · cestitam.eu` },
+  'sr-Cyrl': { subj: 'Ваша честитка од Деда Мраза је спремна ✦', body: (n, u, no) => `Здраво!\n\nЧеститка за ${n} је спремна. Погледајте и преузмите је овде:\n${u}\n\nБрој поруџбине: ${no}\nСтраници можете приступити и преко cestitam.eu/porudzbina (телефон или email + број поруџбине).\n\nСрећни празници!\nЧеститам · cestitam.eu` },
+  uk: { subj: 'Ваше відеопривітання готове ✦', body: (n, u, no) => `Вітаємо!\n\nПривітання для ${n} готове. Переглянути і завантажити:\n${u}\n\nНомер замовлення: ${no}\nСторінку можна відкрити й через cestitam.eu/porudzbina (телефон або email + номер замовлення).\n\nЗі святами!\nČestitam · cestitam.eu` },
 };
 async function emailCustomer(o) {
   const url = `${PUBLIC_URL}/o/${o.id}/${o.key}`;
@@ -138,7 +174,7 @@ async function emailCustomer(o) {
 // ---------- Telegram: сповіщення власнику (TG_BOT_TOKEN + TG_CHAT_ID у .env) ----------
 function notify(o, what) {
   if (o.test) return;
-  agents.tg(`${what}\n№ ${o.no || o.id} · ${o.childName}${o.email ? ' · ' + o.email : ''}\n${PUBLIC_URL}/admin?q=${o.no || o.id}`);
+  agents.tg(`${what}\n№ ${o.no || o.id} · ${o.childName}${o.phone ? ' · ' + showPhone(o.phone) : ''}${o.email ? ' · ' + o.email : ''}\n${PUBLIC_URL}/admin?q=${o.no || o.id}`);
 }
 
 // ---------- воркер: одне замовлення за раз ----------
@@ -249,28 +285,30 @@ function eta(o) {
 }
 Object.assign(CT['sr-Latn'], {
   formed: 'Porudžbina je spremna za plaćanje', formedP: 'Proverite podatke i platite. Izrada počinje odmah posle uplate.',
-  child: 'Ime deteta', email: 'Email', pay: 'Plati', payManual: 'Javićemo vam se sa uputstvom za plaćanje na ovaj email.',
-  paidH: 'Plaćeno! Predajemo porudžbinu na izradu', makingH: 'Montiramo video za vas', makingP: 'Video će se pojaviti ovde, na ovoj stranici. Sačuvajte broj porudžbine i email: sa njima uvek možete otvoriti stranicu na cestitam.eu/porudzbina.',
+  child: 'Ime deteta', email: 'Email', phone: 'Telefon', pay: 'Plati', payManual: 'Javićemo vam se sa uputstvom za plaćanje na ovaj email.',
+  paidH: 'Plaćeno! Predajemo porudžbinu na izradu', makingH: 'Montiramo video za vas', makingP: 'Video će se pojaviti ovde, na ovoj stranici. Sačuvajte broj porudžbine i broj telefona: sa njima uvek možete otvoriti stranicu na cestitam.eu/porudzbina.',
   failH: 'Plaćanje nije prošlo', failP: 'Novac nije skinut. Pokušajte ponovo: napravićemo novu porudžbinu sa novim brojem, sa istim imenom i fotografijom.', retry: 'Pokušaj ponovo',
   copy1: 'Kopiraj', copied1: 'Kopirano', noMail: 'Niste ostavili email, zato sačuvajte link ove stranice: ovde će se pojaviti vaš video.', copyLink: 'Kopiraj link stranice', test: 'TEST porudžbina: plaćanje je simulirano, video se ne pravi.' });
 Object.assign(CT.uk, {
   formed: 'Заявку сформовано, залишилось оплатити', formedP: 'Перевірте дані й оплатіть. Створення починається одразу після оплати.',
-  child: 'Ім’я дитини', email: 'Email', pay: 'Оплатити', payManual: 'Ми надішлемо інструкцію з оплати на цей email.',
-  paidH: 'Оплачено! Передаємо замовлення в роботу', makingH: 'Монтуємо відео для вас', makingP: 'Відео з’явиться тут, на цій сторінці. Збережіть номер замовлення та email: з ними ви завжди відкриєте сторінку на cestitam.eu/porudzbina.',
+  child: 'Ім’я дитини', email: 'Email', phone: 'Телефон', pay: 'Оплатити', payManual: 'Ми надішлемо інструкцію з оплати на цей email.',
+  paidH: 'Оплачено! Передаємо замовлення в роботу', makingH: 'Монтуємо відео для вас', makingP: 'Відео з’явиться тут, на цій сторінці. Збережіть номер замовлення та номер телефону: з ними ви завжди відкриєте сторінку на cestitam.eu/porudzbina.',
   failH: 'Оплата не пройшла', failP: 'Гроші не списано. Спробуйте ще раз: ми створимо нову заявку з новим номером, з тим самим ім’ям і фото.', retry: 'Спробувати ще раз',
   copy1: 'Копіювати', copied1: 'Скопійовано', noMail: 'Ви не вказали email, тож збережіть посилання на цю сторінку: тут з’явиться ваше відео.', copyLink: 'Скопіювати посилання', test: 'ТЕСТОВЕ замовлення: оплата імітується, відео не створюється.' });
 function cyr(s){const p={'DŽ':'Џ','Dž':'Џ','dž':'џ','LJ':'Љ','Lj':'Љ','lj':'љ','NJ':'Њ','Nj':'Њ','nj':'њ','A':'А','B':'Б','C':'Ц','Č':'Ч','Ć':'Ћ','D':'Д','Đ':'Ђ','E':'Е','F':'Ф','G':'Г','H':'Х','I':'И','J':'Ј','K':'К','L':'Л','M':'М','N':'Н','O':'О','P':'П','R':'Р','S':'С','Š':'Ш','T':'Т','U':'У','V':'В','Z':'З','Ž':'Ж','a':'а','b':'б','c':'ц','č':'ч','ć':'ћ','d':'д','đ':'ђ','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'ј','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','r':'р','s':'с','š':'ш','t':'т','u':'у','v':'в','z':'з','ž':'ж'};
   return s.replace(/(<[^>]*>)|(\b(?:cestitam\.eu\/porudzbina|Full HD|TV|JPG|PNG|HEIC|MB|email|TEST)\b)|DŽ|Dž|dž|LJ|Lj|lj|NJ|Nj|nj|[A-Za-zČĆĐŠŽčćđšž]/g,(m,tag,keep)=>tag||keep||(p[m]||m));}
 // сторінка клієнта кирилицею: перекладаємо латиницю автоматично (як на сайті)
 CT['sr-Cyrl'] = Object.fromEntries(Object.entries(CT['sr-Latn']).map(([k, v]) => [k, typeof v === 'string' ? cyr(v) : typeof v === 'function' ? (...a) => cyr(v(...a)) : Array.isArray(v) ? v.map(cyr) : Object.fromEntries(Object.entries(v).map(([x, y]) => [x, cyr(y)]))]));
-const canPay = (o) => o.test || PAYMENT_MODE === 'mock';   // Stripe підключимо тут же: PAYMENT_MODE=stripe
+// імітація оплати лише для тестових замовлень з адмінки; справжній клієнт кнопкою «Оплата успішна» нічого не отримає.
+// Небезпечний режим PAYMENT_MODE=mock для всіх працює тільки разом з MOCK_PAY_ALL=1 (і в адмінці горить попередження).
+const canPay = (o) => o.test || (PAYMENT_MODE === 'mock' && ENV.MOCK_PAY_ALL === '1');   // Stripe підключимо тут же: PAYMENT_MODE=stripe
 function customerPage(o, flash = '') {
   const t = CT[o.lang] || CT['sr-Latn'], ready = o.status === 'sent' && !o.videoPurged;
   const step = { awaiting_payment: 0, payment_failed: 0, hold: 1, queued: 1, rendering: 1, review: 2, sent: 4 }[o.status] ?? 0;
   const m = eta(o), base = `/o/${o.id}/${o.key}`;
   const steps = t.steps.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><span>${i < step ? '✓' : i + 1}</span>${esc(s)}</li>`).join('');
   const row = (label, val, copy) => `<div class="kv"><span class="muted">${esc(label)}</span><b>${esc(val)}</b>${copy ? `<button class="b ghost cp" data-v="${esc(val)}">⧉ ${esc(t.copy1)}</button>` : ''}</div>`;
-  const facts = (copy) => `<div class="facts">${row(t.no, o.no || o.id, copy)}${o.email ? row(t.email, o.email, copy) : ''}${row(t.child, o.childName)}</div>${o.email ? '' : `<div class="kv"><span class="muted">${esc(t.noMail)}</span><button class="b cp" data-v="${esc(PUBLIC_URL + base)}">⧉ ${esc(t.copyLink)}</button></div>`}`;
+  const facts = (copy) => `<div class="facts">${row(t.no, o.no || o.id, copy)}${o.phone ? row(t.phone, showPhone(o.phone), false) : ''}${o.email ? row(t.email, o.email, copy) : ''}${row(t.child, o.childName)}</div>${o.email ? '' : `<div class="kv"><span class="muted">${esc(t.noMail)}</span><button class="b cp" data-v="${esc(PUBLIC_URL + base)}">⧉ ${esc(t.copyLink)}</button></div>`}`;
   let body;
   if (ready) body = `<video controls playsinline preload="metadata" src="${base}/video.mp4"></video>
 <div class="actions"><a class="b" href="${base}/video.mp4?dl=1">⬇ ${esc(t.dl)}</a><button class="b ghost" id="share">↗ ${esc(t.share)}</button><button class="b ghost" id="copy">⧉ ${esc(t.copy)}</button></div>
@@ -311,19 +349,19 @@ function retryOrder(o) {   // нова заявка з новим номером
   const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');
   fs.mkdirSync(odir(id), { recursive: true });
   if (o.photo && fs.existsSync(path.join(odir(o.id), o.photo))) fs.copyFileSync(path.join(odir(o.id), o.photo), path.join(odir(id), o.photo));
-  const n = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: o.childName, nameInput: o.nameInput, email: o.email, lang: o.lang,
+  const n = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: o.childName, nameInput: o.nameInput, email: o.email, phone: o.phone, lang: o.lang,
     photo: o.photo, test: o.test || undefined, status: 'awaiting_payment', nameCheck: o.nameCheck || [], retryOf: o.no, createdAt: new Date().toISOString() };
   log(n, `створено повторно після невдалої оплати ${o.no}`); save(n);
   o.retriedAs = n.no; log(o, `повторна заявка ${n.no}`); save(o);
   return n;
 }
 const LT = {
-  'sr-Latn': { title: 'Moja porudžbina', h: 'Preuzmite svoju čestitku', p: 'Za to su vam potrebni email sa kog ste poručili i broj porudžbine.', email: 'Email', no: 'Broj porudžbine', go: 'Uđi',
-    err: 'Email i broj porudžbine se ne poklapaju. Proverite i pokušajte ponovo.', many: 'Previše pokušaja. Pokušajte ponovo za 10 minuta.', help: 'Ne sećate se broja porudžbine? Nalazi se u emailu i na stranici posle porudžbine. Ako ga nemate, pišite nam.', home: '← Nazad na početnu' },
-  'sr-Cyrl': { title: 'Моја поруџбина', h: 'Преузмите своју честитку', p: 'За то су вам потребни email са ког сте поручили и број поруџбине.', email: 'Email', no: 'Број поруџбине', go: 'Уђи',
-    err: 'Email и број поруџбине се не поклапају. Проверите и покушајте поново.', many: 'Превише покушаја. Покушајте поново за 10 минута.', help: 'Не сећате се броја поруџбине? Налази се у email-у и на страници после поруџбине. Ако га немате, пишите нам.', home: '← Назад на почетну' },
-  uk: { title: 'Моє замовлення', h: 'Отримайте ваше привітання', p: 'Для цього потрібні email, з якого ви замовляли, і номер замовлення.', email: 'Email', no: 'Номер замовлення', go: 'Увійти',
-    err: 'Email і номер замовлення не збігаються. Перевірте й спробуйте ще раз.', many: 'Забагато спроб. Спробуйте ще раз за 10 хвилин.', help: 'Не пам’ятаєте номер замовлення? Він є в листі та на сторінці після замовлення. Якщо його немає, напишіть нам.', home: '← Повернутися на головну' },
+  'sr-Latn': { title: 'Moja porudžbina', h: 'Preuzmite svoju čestitku', p: 'Za to su vam potrebni broj telefona (ili email) sa kojim ste poručili i broj porudžbine.', email: 'Telefon ili email', no: 'Broj porudžbine', go: 'Uđi',
+    err: 'Telefon/email i broj porudžbine se ne poklapaju. Proverite i pokušajte ponovo. Broj porudžbine upišite ceo, sa slovima (npr. KM-00006).', many: 'Previše pokušaja. Pokušajte ponovo kasnije.', help: 'Ne sećate se broja porudžbine? Nalazi se na stranici posle porudžbine i u emailu. Ako ga nemate, pišite nam.', home: '← Nazad na početnu' },
+  'sr-Cyrl': { title: 'Моја поруџбина', h: 'Преузмите своју честитку', p: 'За то су вам потребни број телефона (или email) са којим сте поручили и број поруџбине.', email: 'Телефон или email', no: 'Број поруџбине', go: 'Уђи',
+    err: 'Телефон/email и број поруџбине се не поклапају. Проверите и покушајте поново. Број поруџбине упишите цео, са словима латиницом (нпр. KM-00006).', many: 'Превише покушаја. Покушајте поново касније.', help: 'Не сећате се броја поруџбине? Налази се на страници после поруџбине и у email-у. Ако га немате, пишите нам.', home: '← Назад на почетну' },
+  uk: { title: 'Моє замовлення', h: 'Отримайте ваше привітання', p: 'Для цього потрібні номер телефону (або email), з яким ви замовляли, і номер замовлення.', email: 'Телефон або email', no: 'Номер замовлення', go: 'Увійти',
+    err: 'Телефон/email і номер замовлення не збігаються. Перевірте й спробуйте ще раз. Номер замовлення вводьте повністю, з літерами (напр. KM-00006).', many: 'Забагато спроб. Спробуйте пізніше.', help: 'Не пам’ятаєте номер замовлення? Він є на сторінці після замовлення та в листі. Якщо його немає, напишіть нам.', home: '← Повернутися на головну' },
 };
 function pickLang(req, q) {
   if (LT[q]) return q;
@@ -343,16 +381,16 @@ function loginPage(lang, err = '', email = '', no = '') {
 <form class="lg-f" method="post" action="/porudzbina" style="display:flex"><input type="hidden" name="lang" value="${esc(lang)}">
 <h1>${esc(t.h)}</h1><p class="muted" style="margin:0">${esc(t.p)}</p>
 ${err ? `<p class="err" role="alert">${esc(t[err])}</p>` : ''}
-<label>${esc(t.email)}<input type="email" name="email" required autocomplete="email" inputmode="email" value="${esc(email)}"></label>
-<label>${esc(t.no)}<input name="no" required autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="CT-00001" value="${esc(no)}"></label>
+<label>${esc(t.email)}<input name="email" required autocomplete="tel" maxlength="120" placeholder="+381 64 123 4567" value="${esc(email)}"></label>
+<label>${esc(t.no)}<input name="no" required autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="KM-00006" value="${esc(no)}"></label>
 <button class="b" type="submit">${esc(t.go)}</button>
 <p class="muted" style="margin:0">${esc(t.help)}</p><a class="muted" href="/">${esc(t.home)}</a></form></section>`, lang);
 }
-const CSV_COLS = [['no', 'Номер'], ['createdAt', 'Створено'], ['childName', "Ім'я дитини"], ['email', 'Email'], ['lang', 'Мова'], ['status', 'Статус'],
+const CSV_COLS = [['no', 'Номер'], ['createdAt', 'Створено'], ['childName', "Ім'я дитини"], ['email', 'Email'], ['phone', 'Телефон'], ['lang', 'Мова'], ['status', 'Статус'],
   ['amount', 'Сума'], ['payMethod', 'Оплата'], ['paidAt', 'Оплачено'], ['sentAt', 'Надіслано'], ['note', 'Нотатка']];
 function ordersCsv(bom = true) {   // лише дані замовлення, без фото і відео
   const q = (v) => { v = String(v ?? ''); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
-  return (bom ? '\ufeff' : '') + [CSV_COLS.map(c => c[1]).join(','), ...listOrders().filter(o => !o.test).map(o => CSV_COLS.map(([k]) => q(k === 'status' ? (STU[o.status] || o.status) : o[k])).join(','))].join('\n');
+  return (bom ? '\ufeff' : '') + [CSV_COLS.map(c => c[1]).join(','), ...listOrders().filter(o => !o.test).map(o => CSV_COLS.map(([k]) => q(k === 'status' ? (STU[o.status] || o.status) : k === 'phone' ? showPhone(o.phone) : o[k])).join(','))].join('\n');
 }
 const STU = { awaiting_payment: 'Чекає оплату', hold: 'Чекає вашого OK', queued: 'У черзі', rendering: 'Рендер', review: 'На перевірці', sent: 'Надіслано', failed: 'Помилка', rejected: 'Скасовано', payment_failed: 'Оплата не пройшла' };
 function adminPage(q = '', st = '') {
@@ -365,9 +403,9 @@ function adminPage(q = '', st = '') {
     ['Виручка', money ? money.toLocaleString('uk-UA') : '0'], ['Сер. рендер', avg != null ? avg + ' хв' : '—'], ['Вільно на диску', disk || '—']]
     .map(([l, v]) => `<div class="kpi"><span class="muted">${l}</span><b>${esc(String(v))}</b></div>`).join('');
   const ql = q.trim().toLowerCase();
-  const list = everything.filter(o => (!st || o.status === st) && (!ql || [o.no, o.id, o.childName, o.nameInput, o.email].some(v => String(v || '').toLowerCase().includes(ql))));
+  const list = everything.filter(o => (!st || o.status === st) && (!ql || [o.no, o.id, o.childName, o.nameInput, o.email, o.phone, showPhone(o.phone)].some(v => String(v || '').toLowerCase().includes(ql))));
   const opts = ['', ...Object.keys(STU)].map(k => `<option value="${k}"${k === st ? ' selected' : ''}>${k ? STU[k] : 'Усі статуси'}</option>`).join('');
-  const rows = list.slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(STU[o.status] || o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span>${o.test ? ' <span class="tag" style="color:var(--gold)">ТЕСТ</span>' : ''}${o.retryOf ? ` <span class="muted">повтор після ${esc(o.retryOf)}</span>` : ''}${o.retriedAs ? ` <span class="muted">→ ${esc(o.retriedAs)}</span>` : ''} <span class="muted">${esc(o.email)} · ${esc(o.createdAt.slice(0, 16).replace('T', ' '))} · ${esc(o.lang)}</span>
+  const rows = list.slice(0, 200).map(o => `<div class="card"><b>${esc(o.childName)}</b> <span class="tag">${esc(STU[o.status] || o.status)}</span> <span class="tag">№ ${esc(o.no || '')}</span>${o.test ? ' <span class="tag" style="color:var(--gold)">ТЕСТ</span>' : ''}${o.retryOf ? ` <span class="muted">повтор після ${esc(o.retryOf)}</span>` : ''}${o.retriedAs ? ` <span class="muted">→ ${esc(o.retriedAs)}</span>` : ''} <span class="muted">${o.phone ? esc(showPhone(o.phone)) + ' · ' : ''}${esc(o.email)} · ${esc(o.createdAt.slice(0, 16).replace('T', ' '))} · ${esc(o.lang)}</span>
 ${o.nameInput && o.nameInput !== o.childName ? `<p class="muted">Введено: ${esc(o.nameInput)}</p>` : ''}${o.nameCheck?.length ? `<p class="muted">Ім'я перевірити: ${esc(o.nameCheck.map(agents.label).join(', '))}</p>` : ''}
 ${o.amount ? `<p class="muted">Оплата: ${esc(String(o.amount))} ${esc(o.payMethod || '')} · ${esc((o.paidAt || '').slice(0, 16).replace('T', ' '))}</p>` : ''}
 ${o.result?.reviewReasons?.length ? `<p class="muted">Зауваження рендеру: ${esc(o.result.reviewReasons.map(agents.label).join(', '))}</p>` : ''}${o.check ? `<p class="${o.check.ok || o.checkOk ? 'muted' : 'warn'}">Контроль замовлення: ${o.check.ok ? '✓ усе гаразд' : esc(o.check.problems.map(agents.label).join(', '))}${o.checkOk && !o.check.ok ? ' (ви дали OK)' : ''}${o.check.notes?.length ? ` · ${esc(o.check.notes.map(agents.label).join(', '))}` : ''}</p>` : ''}
@@ -384,13 +422,17 @@ ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Пере
 .note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}
 .warn{color:#ffb4a8;font-size:14px}.probs{border-color:var(--red);background:linear-gradient(180deg,#3a1d1b,#2a1614)}.probs ul{margin:6px 0 0;padding-left:20px}.okbox{color:var(--mut);font-size:14px;margin:0 0 14px}
 .qc{margin:6px 0;padding-left:18px;font-size:14px}.qcf{display:flex;gap:10px;flex-wrap:wrap}.qcf figure{margin:0;flex:1;min-width:200px;max-width:420px}.qcf img{width:100%;max-height:300px;object-fit:contain;border-radius:10px;display:block}</style>
-<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><a class="b ghost" href="/admin/agents">🤖 Агенти</a> <form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a></span></header>
+<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><a class="b ghost" href="/admin/agents">🤖 Агенти</a> <form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a> <form method="post" action="/admin/logout-all" style="display:inline"><button class="b ghost" title="Закрити адмінку на всіх телефонах і компʼютерах">⎋ Вийти всюди</button></form></span></header>
 ${problemsBox(everything)}<div class="kpis">${tiles}</div>
-<form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
+<form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, телефон, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
 <p class="muted">Знайдено: ${list.length}. Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Нічого не знайдено.</p>'}`);
 }
 function problemsBox(orders) {   // зведення агентів: усе, що потребує вашої уваги
   const pr = agents.problemsNow(orders, DATA), w = agents.watchdogState(DATA);
+  if (PAYMENT_MODE === 'none') pr.unshift({ text: 'PAYMENT_MODE=none: замовлення йдуть у рендер БЕЗ оплати. Для роботи поставте manual.' });
+  if (PAYMENT_MODE === 'mock' && ENV.MOCK_PAY_ALL === '1') pr.unshift({ text: 'MOCK_PAY_ALL=1: будь-хто може «оплатити» кнопкою імітації. Вимкніть.' });
+  if (!ADMIN_HASH) pr.unshift({ text: 'ADMIN_TOKEN закороткий (менше 24 символів): адмінка не пускає. Задайте довший.' });
+  if (ADMIN_TOKEN && ENV.ADMIN_TOKEN_SHA256) pr.unshift({ text: 'У .env є і ADMIN_TOKEN, і ADMIN_TOKEN_SHA256: рядок ADMIN_TOKEN можна прибрати.' });
   if (!pr.length) return `<p class="okbox">✓ Проблем немає. Сторож сервера: ${w ? `перевірка ${w.ageMin} хв тому` : '—'}. Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p>`;
   return `<section class="card probs"><b>⚠️ Проблеми (${pr.length})</b><ul>${pr.map(x => `<li>${x.o ? `<a href="/admin?q=${esc(x.o.no || x.o.id)}">№ ${esc(x.o.no || '')} ${esc(x.o.childName)}</a>: ` : ''}${esc(x.text)}</li>`).join('')}</ul>
 <p class="muted">Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p></section>`;
@@ -426,11 +468,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && p === '/api/orders') {
-      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      const ip = clientIp(req);
       if (rateLimited(ip)) return send(res, 429, { error: 'too_many' });
+      try { const fsx = fs.statfsSync(DATA); if (fsx.bavail * fsx.bsize < 3e9) { event({ msg: 'нові замовлення зупинено: мало місця на диску' }); return send(res, 503, { error: 'busy' }); } } catch {}
       const body = JSON.parse((await readBody(req, MAX_PHOTO * 1.4 + 20000)).toString('utf8'));
       const name = String(body.name || '').trim().slice(0, 40), email = String(body.email || '').trim().slice(0, 120);
-      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: 'email' });   // email за бажанням
+      if (email && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) return send(res, 400, { error: 'email' });   // email за бажанням; лише звичайні символи
+      const phone = normPhone(body.phone); if (!phone) return send(res, 400, { error: 'phone' });   // телефон обовʼязковий: з ним клієнт входить на /porudzbina
       const nm = resolveName(name); if (!name || !nm.ok) return send(res, 400, { error: 'name' });
       const m = /^data:image\/[a-z0-9.+-]+;base64,(.+)$/i.exec(String(body.photo || ''));
       if (!m) return send(res, 400, { error: 'photo' });
@@ -439,7 +483,7 @@ const server = http.createServer(async (req, res) => {
       const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');
       fs.mkdirSync(odir(id), { recursive: true });
       fs.writeFileSync(path.join(odir(id), `photo.${ext}`), buf);
-      const o = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email,
+      const o = { id, ...newNo(), key: crypto.randomBytes(16).toString('hex'), childName: nm.nominative, nameInput: name, email, phone,
         lang: ['uk', 'sr-Latn', 'sr-Cyrl'].includes(body.lang) ? body.lang : 'sr-Latn', photo: `photo.${ext}`,
         status: PAYMENT_MODE === 'none' ? 'queued' : 'awaiting_payment', nameCheck: nm.needsReview ? nm.reviewReasons : [], createdAt: new Date().toISOString() };
       log(o, 'створено'); save(o); notify(o, '🆕 Нове замовлення'); setImmediate(tick);
@@ -455,14 +499,22 @@ const server = http.createServer(async (req, res) => {
     // вхід клієнта: email + номер замовлення -> його сторінка
     if (p === '/porudzbina' && req.method === 'GET') return send(res, 200, loginPage(pickLang(req, u.searchParams.get('lang'))), { 'Cache-Control': 'no-store' });
     if (p === '/porudzbina' && req.method === 'POST') {
-      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      // вхід: телефон АБО email + ПОВНИЙ номер замовлення з літерами (KM-00006). Без літер номер пускає лише старі 6-значні.
+      const ip = clientIp(req);
       const f = new URLSearchParams((await readBody(req, 4000)).toString('utf8'));
       const lang = LT[f.get('lang')] ? f.get('lang') : 'sr-Latn';
-      const email = String(f.get('email') || '').trim().toLowerCase().slice(0, 120), no = String(f.get('no') || '').replace(/\D/g, '').slice(0, 8);
-      if (loginLimited('ip:' + ip) || (email && loginLimited('em:' + email))) { event({ msg: 'вхід клієнта: забагато спроб', ip, email }); return send(res, 429, loginPage(lang, 'many', email, no)); }
-      const lt = (String(f.get('no') || '').match(/[a-z]{2}/i) || [''])[0].toUpperCase(), n = Number(no), em = (x) => safeEq(h(String(x.email || '').toLowerCase()), h(email));
-      const o = no && email && (listOrders().find(x => x.seq === n && em(x) && (!lt || String(x.no).startsWith(lt + '-'))) || (no.length === 6 && listOrders().find(x => x.noOld === no && em(x))));
-      if (!o) { event({ msg: 'вхід клієнта: не збіглося', ip, email, no }); return send(res, 200, loginPage(lang, 'err', email, no), { 'Cache-Control': 'no-store' }); }
+      const who = String(f.get('email') || '').trim().slice(0, 120), rawNo = String(f.get('no') || '').trim().slice(0, 16);
+      const isMail = who.includes('@'), email = isMail ? who.toLowerCase() : '', phone = isMail ? '' : normPhone(who), idKey = email || phone;
+      // ліміти: 5 спроб за 10 хв з одного IP і на один телефон/email, плюс не більше 20 невдалих на день на телефон/email
+      if (loginLimited('ip:' + ip) || (idKey && loginLimited('id:' + idKey)) || (idKey && (failDay.get(idKey) || 0) >= 20)) {
+        event({ msg: 'вхід клієнта: забагато спроб', ip, who }); return send(res, 429, loginPage(lang, 'many', who, rawNo)); }
+      const mt = /^([A-Za-z]{2})\s*-?\s*(\d{1,8})$/.exec(rawNo), digits = rawNo.replace(/\D/g, '');
+      const same = (x) => email ? safeEq(h(String(x.email || '').toLowerCase()), h(email)) : (!!phone && safeEq(h(String(x.phone || '')), h(phone)));
+      const all = idKey ? listOrders() : [];
+      const o = (mt && all.find(x => x.seq === Number(mt[2]) && String(x.no).startsWith(mt[1].toUpperCase() + '-') && same(x)))
+        || (!mt && digits.length === 6 && all.find(x => x.noOld === digits && same(x)));
+      if (!o) { if (idKey) failDay.set(idKey, (failDay.get(idKey) || 0) + 1);
+        event({ msg: 'вхід клієнта: не збіглося', ip, who, no: rawNo }); return send(res, 200, loginPage(lang, 'err', who, rawNo), { 'Cache-Control': 'no-store' }); }
       log(o, `клієнт увійшов (${ip})`); save(o);
       return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
     }
@@ -495,14 +547,28 @@ const server = http.createServer(async (req, res) => {
     }
 
     // адмінка
-    if (p === '/admin/login' && req.method === 'GET') {
-      const t = u.searchParams.get('token') || '';
-      if (!ADMIN_TOKEN || !safeEq(crypto.createHash('sha256').update(t).digest('hex'), crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex'))) return send(res, 403, page('Ні', '<h1>Доступ заборонено</h1>'));
-      event({ msg: 'адмін увійшов', ip: (req.headers['x-forwarded-for'] || '').split(',')[0] });
-      return send(res, 302, '', { 'Set-Cookie': `adm=${crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex')}; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=2592000`, Location: '/admin' });
+    // вхід в адмінку: токен вводиться у форму (POST), не в адресу; cookie — випадкова сесія на 30 днів
+    const admLogin = (msg = '') => page('Вхід · CRM', `<header class="top"><span class="logo">✳ Čestitam · CRM</span></header><section class="card">
+<form method="post" action="${LOGIN_PATH}" style="display:flex;flex-direction:column;gap:12px;max-width:420px"><h1 style="margin:0">Вхід в адмінку</h1>${msg ? `<p class="muted">${esc(msg)}</p>` : ''}
+<input type="password" name="token" required autocomplete="current-password" placeholder="ADMIN_TOKEN" style="font:16px system-ui;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0e211a;color:var(--ink)"><button class="b">Увійти</button></form></section>`, 'uk');
+    if (p === LOGIN_PATH && req.method === 'GET') return send(res, 200, admLogin(u.searchParams.has('token') ? 'Посилання з токеном у адресі більше не працює (так безпечніше). Вставте токен сюди.' : ''), { 'Cache-Control': 'no-store' });
+    if (p === LOGIN_PATH && req.method === 'POST') {
+      const ip = clientIp(req);
+      if (adminLimited(ip)) { event({ msg: 'адмінка: забагато спроб входу', ip }); return send(res, 429, admLogin('Забагато спроб. Спробуйте за годину.')); }
+      const t = new URLSearchParams((await readBody(req, 2000)).toString('utf8')).get('token') || '';
+      if (!ADMIN_HASH || !safeEq(h(t), ADMIN_HASH)) {
+        event({ msg: 'адмінка: невірний токен', ip }); agents.tg(`⚠️ Невдала спроба входу в адмінку з IP ${ip}`);
+        return send(res, 403, admLogin(!ADMIN_HASH ? 'ADMIN_TOKEN закороткий: потрібно щонайменше 24 символи.' : 'Невірний токен.'));
+      }
+      event({ msg: 'адмін увійшов', ip }); agents.tg(`🔐 Вхід в адмінку з IP ${ip}`);
+      return send(res, 303, '', { 'Set-Cookie': `adm=${newSession(ip)}; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=${SESS_DAYS * 86400}`, Location: '/admin' });
     }
     if (p.startsWith('/admin')) {
-      if (!isAdmin(req)) return send(res, 403, page('Ні', '<h1>Увійдіть через /admin/login?token=…</h1>'));
+      if (!isAdmin(req)) return send(res, 404, { error: 'not_found' });   // адмінку не видно, доки не увійшли через LOGIN_PATH
+      // захист від підробки запитів: POST в адмінку лише зі сторінок цього ж сайту
+      if (req.method === 'POST') { const og = req.headers.origin; if (og && og !== new URL(PUBLIC_URL).origin) { event({ msg: 'адмінка: POST з чужого сайту', origin: og }); return send(res, 403, { error: 'origin' }); } }
+      if (p === '/admin/logout-all' && req.method === 'POST') { SESS = {}; saveSess(); event({ msg: 'адмін: вийти на всіх пристроях' });
+        return send(res, 303, '', { 'Set-Cookie': 'adm=; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=0', Location: '/' }); }
       if (p === '/admin' && req.method === 'GET') return send(res, 200, adminPage(u.searchParams.get('q') || '', u.searchParams.get('st') || ''), { 'Cache-Control': 'no-store' });
       if (p === '/admin/test-order' && req.method === 'POST') {   // перевірка кругу оплати без рендеру і без витрат
         const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');

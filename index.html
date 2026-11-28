@@ -92,7 +92,8 @@
       <label class="drop" id="drop"><input type="file" name="photo" id="fPhoto" accept="image/jpeg,image/png,image/webp,image/heic" required><img id="preview" alt="" hidden><span class="drop-text" data-i="fPhotoBtn">Izaberite fotografiju</span></label>
       <small data-i="fPhotoHint">Lice izbliza, gleda u kameru, dobro osvetljeno. Bez naočara za sunce i bez drugih ljudi na slici.</small>
     </div>
-    <label class="field"><span data-i="fEmail">Vaš email</span><input type="email" name="email" autocomplete="email" inputmode="email"><small data-i="fEmailHint">Na ovu adresu šaljemo link do gotovog videa.</small></label>
+    <label class="field"><span data-i="fPhone">Vaš broj telefona</span><input type="tel" name="phone" id="fPhone" required maxlength="20" autocomplete="tel" inputmode="tel" placeholder="+381 64 123 4567"><small data-i="fPhoneHint">Sa ovim brojem i brojem porudžbine uvek možete otvoriti stranicu porudžbine.</small></label>
+    <label class="field"><span data-i="fEmail">Vaš email</span><input type="email" name="email" required maxlength="120" autocomplete="email" inputmode="email"><small data-i="fEmailHint">Na ovu adresu šaljemo link do gotovog videa.</small></label>
     <label class="check"><input type="checkbox" name="consent" required><span data-i="consent">Roditelj sam ili staratelj i slažem se sa <a href="privacy.html">pravilima privatnosti</a>.</span></label>
     <button class="btn btn-wide" type="submit" data-i="send">Pošalji porudžbinu</button>
     <p class="note" data-i="payNote">Posle porudžbine javljamo vam se sa uputstvom za plaćanje. Izrada počinje čim stigne uplata.</p>
