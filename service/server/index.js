@@ -33,6 +33,11 @@ const ORDERS = path.join(DATA, 'orders');
 const MASTER = ENV.MASTER_JSON || path.join(__dirname, '..', 'master', 'master.json');
 const PUBLIC_URL = (ENV.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const ADMIN_TOKEN = ENV.ADMIN_TOKEN || '';
+// у .env можна тримати не сам токен, а лише його хеш: ADMIN_TOKEN_SHA256 (64 hex). Тоді навіть із копії .env токен не дізнатися.
+const ADMIN_HASH = /^[a-f0-9]{64}$/i.test(ENV.ADMIN_TOKEN_SHA256 || '') ? ENV.ADMIN_TOKEN_SHA256.toLowerCase()
+  : ADMIN_TOKEN.length >= 24 ? crypto.createHash('sha256').update(ADMIN_TOKEN).digest('hex') : '';
+// адреса входу в адмінку прихована: ADMIN_LOGIN_PATH=/admin/<щось-своє>. Без входу всі /admin… відповідають «не знайдено».
+const LOGIN_PATH = /^\/admin\/[\w-]{4,64}$/.test(ENV.ADMIN_LOGIN_PATH || '') ? ENV.ADMIN_LOGIN_PATH : '/admin/login';
 const ORIGINS = (ENV.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const PAYMENT_MODE = ENV.PAYMENT_MODE || 'manual';      // manual: адмін позначає «оплачено»; none: одразу в чергу
 const AUTO_SEND = ENV.AUTO_SEND === '1';                 // 1: ролик без зауважень іде клієнту без ручної перевірки
@@ -41,7 +46,7 @@ const KEEP_PHOTO_DAYS = Number(ENV.KEEP_PHOTO_DAYS || 30);   // фото дит�
 const KEEP_VIDEO_DAYS = Number(ENV.KEEP_VIDEO_DAYS || 60);   // відео — через N днів
 const AVG_RENDER_MIN = 8;
 fs.mkdirSync(ORDERS, { recursive: true });
-if (!ADMIN_TOKEN) console.warn('[warn] ADMIN_TOKEN не задано: адмінка вимкнена');
+if (!ADMIN_HASH) console.warn('[warn] ADMIN_TOKEN (від 24 символів) або ADMIN_TOKEN_SHA256 не задано: адмінка вимкнена');
 
 // ---------- сховище ----------
 const odir = (id) => path.join(ORDERS, id);
@@ -103,7 +108,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const h = (v) => crypto.createHash('sha256').update(v).digest('hex');
 const safeEq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 function isAdmin(req) {
-  if (!ADMIN_TOKEN) return false;
+  if (!ADMIN_HASH) return false;
   const c = (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith('adm='));
   const s = c && /^[a-f0-9]{64}$/.test(c.slice(4)) && SESS[h(c.slice(4))];
   return !!s && s.exp > Date.now();
@@ -426,7 +431,8 @@ function problemsBox(orders) {   // зведення агентів: усе, щ�
   const pr = agents.problemsNow(orders, DATA), w = agents.watchdogState(DATA);
   if (PAYMENT_MODE === 'none') pr.unshift({ text: 'PAYMENT_MODE=none: замовлення йдуть у рендер БЕЗ оплати. Для роботи поставте manual.' });
   if (PAYMENT_MODE === 'mock' && ENV.MOCK_PAY_ALL === '1') pr.unshift({ text: 'MOCK_PAY_ALL=1: будь-хто може «оплатити» кнопкою імітації. Вимкніть.' });
-  if (ADMIN_TOKEN.length < 24) pr.unshift({ text: 'ADMIN_TOKEN закороткий (менше 24 символів): адмінка не пускає. Задайте довший.' });
+  if (!ADMIN_HASH) pr.unshift({ text: 'ADMIN_TOKEN закороткий (менше 24 символів): адмінка не пускає. Задайте довший.' });
+  if (ADMIN_TOKEN && ENV.ADMIN_TOKEN_SHA256) pr.unshift({ text: 'У .env є і ADMIN_TOKEN, і ADMIN_TOKEN_SHA256: рядок ADMIN_TOKEN можна прибрати.' });
   if (!pr.length) return `<p class="okbox">✓ Проблем немає. Сторож сервера: ${w ? `перевірка ${w.ageMin} хв тому` : '—'}. Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p>`;
   return `<section class="card probs"><b>⚠️ Проблеми (${pr.length})</b><ul>${pr.map(x => `<li>${x.o ? `<a href="/admin?q=${esc(x.o.no || x.o.id)}">№ ${esc(x.o.no || '')} ${esc(x.o.childName)}</a>: ` : ''}${esc(x.text)}</li>`).join('')}</ul>
 <p class="muted">Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p></section>`;
@@ -543,26 +549,26 @@ const server = http.createServer(async (req, res) => {
     // адмінка
     // вхід в адмінку: токен вводиться у форму (POST), не в адресу; cookie — випадкова сесія на 30 днів
     const admLogin = (msg = '') => page('Вхід · CRM', `<header class="top"><span class="logo">✳ Čestitam · CRM</span></header><section class="card">
-<form method="post" action="/admin/login" style="display:flex;flex-direction:column;gap:12px;max-width:420px"><h1 style="margin:0">Вхід в адмінку</h1>${msg ? `<p class="muted">${esc(msg)}</p>` : ''}
+<form method="post" action="${LOGIN_PATH}" style="display:flex;flex-direction:column;gap:12px;max-width:420px"><h1 style="margin:0">Вхід в адмінку</h1>${msg ? `<p class="muted">${esc(msg)}</p>` : ''}
 <input type="password" name="token" required autocomplete="current-password" placeholder="ADMIN_TOKEN" style="font:16px system-ui;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0e211a;color:var(--ink)"><button class="b">Увійти</button></form></section>`, 'uk');
-    if (p === '/admin/login' && req.method === 'GET') return send(res, 200, admLogin(u.searchParams.has('token') ? 'Посилання з токеном у адресі більше не працює (так безпечніше). Вставте токен сюди.' : ''), { 'Cache-Control': 'no-store' });
-    if (p === '/admin/login' && req.method === 'POST') {
+    if (p === LOGIN_PATH && req.method === 'GET') return send(res, 200, admLogin(u.searchParams.has('token') ? 'Посилання з токеном у адресі більше не працює (так безпечніше). Вставте токен сюди.' : ''), { 'Cache-Control': 'no-store' });
+    if (p === LOGIN_PATH && req.method === 'POST') {
       const ip = clientIp(req);
       if (adminLimited(ip)) { event({ msg: 'адмінка: забагато спроб входу', ip }); return send(res, 429, admLogin('Забагато спроб. Спробуйте за годину.')); }
       const t = new URLSearchParams((await readBody(req, 2000)).toString('utf8')).get('token') || '';
-      if (!ADMIN_TOKEN || ADMIN_TOKEN.length < 24 || !safeEq(h(t), h(ADMIN_TOKEN))) {
+      if (!ADMIN_HASH || !safeEq(h(t), ADMIN_HASH)) {
         event({ msg: 'адмінка: невірний токен', ip }); agents.tg(`⚠️ Невдала спроба входу в адмінку з IP ${ip}`);
-        return send(res, 403, admLogin(ADMIN_TOKEN && ADMIN_TOKEN.length < 24 ? 'ADMIN_TOKEN закороткий: потрібно щонайменше 24 символи.' : 'Невірний токен.'));
+        return send(res, 403, admLogin(!ADMIN_HASH ? 'ADMIN_TOKEN закороткий: потрібно щонайменше 24 символи.' : 'Невірний токен.'));
       }
       event({ msg: 'адмін увійшов', ip }); agents.tg(`🔐 Вхід в адмінку з IP ${ip}`);
       return send(res, 303, '', { 'Set-Cookie': `adm=${newSession(ip)}; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=${SESS_DAYS * 86400}`, Location: '/admin' });
     }
     if (p.startsWith('/admin')) {
-      if (!isAdmin(req)) return send(res, 303, '', { Location: '/admin/login' });
+      if (!isAdmin(req)) return send(res, 404, { error: 'not_found' });   // адмінку не видно, доки не увійшли через LOGIN_PATH
       // захист від підробки запитів: POST в адмінку лише зі сторінок цього ж сайту
       if (req.method === 'POST') { const og = req.headers.origin; if (og && og !== new URL(PUBLIC_URL).origin) { event({ msg: 'адмінка: POST з чужого сайту', origin: og }); return send(res, 403, { error: 'origin' }); } }
       if (p === '/admin/logout-all' && req.method === 'POST') { SESS = {}; saveSess(); event({ msg: 'адмін: вийти на всіх пристроях' });
-        return send(res, 303, '', { 'Set-Cookie': 'adm=; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=0', Location: '/admin/login' }); }
+        return send(res, 303, '', { 'Set-Cookie': 'adm=; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=0', Location: '/' }); }
       if (p === '/admin' && req.method === 'GET') return send(res, 200, adminPage(u.searchParams.get('q') || '', u.searchParams.get('st') || ''), { 'Cache-Control': 'no-store' });
       if (p === '/admin/test-order' && req.method === 'POST') {   // перевірка кругу оплати без рендеру і без витрат
         const id = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomBytes(4).toString('hex');

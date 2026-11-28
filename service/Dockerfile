@@ -1,5 +1,6 @@
 FROM node:22-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt-get upgrade: при кожній збірці підтягуємо свіжі оновлення безпеки системи
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
       ffmpeg imagemagick python3 python3-numpy python3-opencv opencv-data python3-scipy python3-pil libheif-examples ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 # обмеження ImageMagick (небезпечні формати вимкнені, ліміти розміру); якість фото не змінюється

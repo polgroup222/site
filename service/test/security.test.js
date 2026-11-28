@@ -53,10 +53,10 @@ test('оплата-імітація: справжній клієнт не мож
   const o = JSON.parse(fs.readFileSync(path.join(dir, 'orders', A.id, 'order.json'), 'utf8')); assert.equal(o.status, 'awaiting_payment');
 });
 test('адмінка: токен у адресі не працює, невірний токен — ні, ліміт спроб', async () => {
-  assert.equal((await req('/admin')).status, 303);
+  assert.equal((await req('/admin')).status, 404);   // адмінку не видно без входу
   const g = await req('/admin/login?token=' + TOKEN); assert.equal(g.status, 200); assert.equal(g.headers.get('set-cookie'), null);
   assert.equal((await form('/admin/login', { token: 'wrong' }, { 'X-Forwarded-For': '10.3.0.1' })).status, 403);
-  assert.equal((await req('/admin', { headers: { Cookie: 'adm=' + require('crypto').createHash('sha256').update(TOKEN).digest('hex') } })).status, 303);   // стара cookie
+  assert.equal((await req('/admin', { headers: { Cookie: 'adm=' + require('crypto').createHash('sha256').update(TOKEN).digest('hex') } })).status, 404);   // стара cookie
   let last; for (let i = 0; i < 12; i++) last = await form('/admin/login', { token: 'w' + i }, { 'X-Forwarded-For': '10.3.0.9' });
   assert.equal(last.status, 429);
 });
@@ -69,7 +69,7 @@ test('адмінка: вхід, CSRF з чужого сайту, вийти вс
   const html = await a.text(); assert.ok(!html.includes('nonce="r"'));
   assert.equal((await form(`/admin/${A.id}/reject`, {}, { Cookie: c, Origin: 'https://evil.example' })).status, 403);
   assert.equal((await form('/admin/logout-all', {}, { Cookie: c })).status, 303);
-  assert.equal((await req('/admin', { headers: { Cookie: c } })).status, 303);
+  assert.equal((await req('/admin', { headers: { Cookie: c } })).status, 404);
 });
 test('шляхи і чужі файли: ../, чужий ключ, відео до готовності', async () => {
   for (const p of ['/o/../../etc/passwd/' + 'a'.repeat(32), `/o/${A.id}/${'0'.repeat(32)}`, `/o/${A.id}/${'0'.repeat(32)}/video.mp4`, '/admin/v/..%2f..%2fetc.mp4', '/api/export.csv?token=']) {
