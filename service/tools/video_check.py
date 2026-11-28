@@ -40,7 +40,7 @@ def scan(f):
 
 def master_scan():
     st = os.stat(mvideo); key = f'{st.st_size}:{int(st.st_mtime)}'
-    cache = os.path.join(os.path.dirname(os.path.abspath(mvideo)), 'master_qc_cache.json')
+    cache = os.environ.get('MASTER_QC_CACHE') or os.path.join(os.path.dirname(os.path.abspath(mvideo)), 'master_qc_cache.json')
     try:
         c = json.load(open(cache))
         if c.get('key') == key: return c['scan']
@@ -94,7 +94,8 @@ if S['lufs'] is not None and MS['lufs'] is not None:
     add('loudness', abs(S['lufs'] - MS['lufs']) <= 1.5, 'Гучність як у мастера', f"{S['lufs']:.1f} LUFS (мастер {MS['lufs']:.1f})")
 else:
     add('loudness', False, 'Гучність як у мастера', 'не вдалося виміряти')
-add('clipping', S['peak'] is not None and S['peak'] < -0.3, 'Звук без хрипу (немає перевантаження)', f"пік {S['peak']} dBFS")
+# після лімітера (0.95) пік ≈ -0.4…0 dBFS; вище 0 — справжнє перевантаження
+add('clipping', S['peak'] is not None and S['peak'] <= 0.0, 'Звук без хрипу (немає перевантаження)', f"пік {S['peak']} dBFS")
 
 # 4. ім'я звучить: на місці імені звук помітно гучніший, ніж у мастері (там пауза в музиці)
 NV = M.get('name_voice')
