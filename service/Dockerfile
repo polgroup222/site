@@ -6,6 +6,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 # обмеження ImageMagick (небезпечні формати вимкнені, ліміти розміру); якість фото не змінюється
 COPY config/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 WORKDIR /app
+# бібліотека Anthropic для AI-підтримки (лише вона, версія закріплена в package-lock.json)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 COPY . .
 RUN chown -R root:root /app && chmod -R a+rX /app && chmod +x /app/docker-entrypoint.sh
 ENV NODE_ENV=production PORT=8080 DATA_DIR=/data MASTER_JSON=/app/master/master.json MASTER_VIDEO=/data/master/master.mp4 \

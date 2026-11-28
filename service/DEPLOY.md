@@ -77,3 +77,10 @@ cd ~/site && git pull && cd service && docker compose up -d --build
 - Токен адмінки можна тримати в `.env` лише як хеш (`ADMIN_TOKEN_SHA256`).
 - CORS: `ALLOWED_ORIGINS` лише ваш домен або порожньо (сайт і сервіс на одному домені).
 - Оновлення системи й образів: `docker compose build --pull && docker compose up -d --force-recreate` (у Dockerfile також `apt-get upgrade`).
+
+## AI-підтримка (чат справа внизу)
+1. Ключ: console.anthropic.com → API keys → Create key. Поповніть баланс (від $5 вистачить надовго: ~$0.0005 за відповідь).
+2. У `/root/site/service/.env` допишіть `ANTHROPIC_API_KEY=...` і за бажанням `SUPPORT_DAILY_USD=1`.
+3. `cd /root/site/service && docker compose up -d --build` (потрібен `--build`: додано бібліотеку Anthropic).
+4. Перевірка: у Telegram-боті напишіть `/ai` — бот відповість витратами за сьогодні. CRM → «💬 Підтримка».
+Без ключа працюють кнопки з частими запитаннями й «Написати оператору». Відповідь клієнту: `/reply T-0001 текст` у боті або форма в CRM.

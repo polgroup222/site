@@ -9,6 +9,8 @@ const { resolveName } = require('../src/names');
 const agents = require('./agents');
 const { agentsPage } = require('./agents-page');
 const report = require('./report');
+const support = require('./support');
+const { widgetJs, widgetCss } = require('./support-widget');
 const { spawn } = require('child_process');
 // рендер у дочірньому процесі: сервер лишається чуйним, поки йде ffmpeg
 function renderInChild(job) {
@@ -231,11 +233,13 @@ for (const o of listOrders()) if (o.status === 'rendering') { o.status = 'queued
 setInterval(tick, 5000);
 agents.startMorning({ listOrders, dataDir: DATA, publicUrl: PUBLIC_URL });
 report.startReport({ listOrders, dataDir: DATA, event });
+support.init({ dataDir: DATA, tg: agents.tg, publicUrl: PUBLIC_URL, loadOrder: load, event });
 
 // ---------- приватність: автоматичне видалення ----------
 const daysSince = (t) => t ? (Date.now() - Date.parse(t)) / 864e5 : 0;
 function purge() {
   if (ENV.AUTO_PURGE === '0') return;   // власник погодив автовидалення (27.11): фото 30 днів, відео 60, неоплачені 7
+  try { support.purge(); } catch (e) { console.error('support purge', e.message); }   // звернення — через 60 днів
   for (const o of listOrders()) {
     const d = odir(o.id), ref = o.sentAt || o.updatedAt;
     const done = ['sent', 'rejected', 'failed'].includes(o.status), stale = o.status === 'awaiting_payment' && daysSince(o.createdAt) > 7;
@@ -332,7 +336,7 @@ ${o.test ? `<p class="testb">${esc(t.test)}</p>` : ''}
 ${live ? '<script nonce="r">setTimeout(()=>location.replace(location.pathname),30000)</script>' : ''}
 <script nonce="r">document.querySelectorAll('.cp').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.v).then(()=>{b.textContent=${JSON.stringify('✓ ' + t.copied1)};setTimeout(()=>b.textContent=${JSON.stringify('⧉ ' + t.copy1)},1800)}));
 ${ready ? `const u=location.href.split('#')[0];document.getElementById('share').onclick=()=>navigator.share?navigator.share({title:document.title,url:u}).catch(()=>{}):navigator.clipboard.writeText(u);
-document.getElementById('copy').onclick=e=>navigator.clipboard.writeText(u).then(()=>{e.target.textContent=${JSON.stringify('✓ ' + t.copied)}});` : ''}</script>`, o.lang);
+document.getElementById('copy').onclick=e=>navigator.clipboard.writeText(u).then(()=>{e.target.textContent=${JSON.stringify('✓ ' + t.copied)}});` : ''}</script><script src="/api/support/widget.js" defer></script>`, o.lang);
 }
 // тимчасова сторінка оплати для тестових замовлень (до підключення Stripe): успіх або відмова
 function mockCheckout(o) {
@@ -384,7 +388,7 @@ ${err ? `<p class="err" role="alert">${esc(t[err])}</p>` : ''}
 <label>${esc(t.email)}<input name="email" required autocomplete="tel" maxlength="120" placeholder="+381 64 123 4567" value="${esc(email)}"></label>
 <label>${esc(t.no)}<input name="no" required autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="KM-00006" value="${esc(no)}"></label>
 <button class="b" type="submit">${esc(t.go)}</button>
-<p class="muted" style="margin:0">${esc(t.help)}</p><a class="muted" href="/">${esc(t.home)}</a></form></section>`, lang);
+<p class="muted" style="margin:0">${esc(t.help)}</p><a class="muted" href="/">${esc(t.home)}</a></form></section><script src="/api/support/widget.js" defer></script>`, lang);
 }
 const CSV_COLS = [['no', 'Номер'], ['createdAt', 'Створено'], ['childName', "Ім'я дитини"], ['email', 'Email'], ['phone', 'Телефон'], ['lang', 'Мова'], ['status', 'Статус'],
   ['amount', 'Сума'], ['payMethod', 'Оплата'], ['paidAt', 'Оплачено'], ['sentAt', 'Надіслано'], ['note', 'Нотатка']];
@@ -422,19 +426,19 @@ ${['review', 'failed', 'sent'].includes(o.status) ? btn(o, 'rerender', 'Пере
 .note{display:flex;gap:8px;margin:8px 0}.note input{flex:1}.pay{display:inline-flex;gap:6px;flex-wrap:wrap}
 .warn{color:#ffb4a8;font-size:14px}.probs{border-color:var(--red);background:linear-gradient(180deg,#3a1d1b,#2a1614)}.probs ul{margin:6px 0 0;padding-left:20px}.okbox{color:var(--mut);font-size:14px;margin:0 0 14px}
 .qc{margin:6px 0;padding-left:18px;font-size:14px}.qcf{display:flex;gap:10px;flex-wrap:wrap}.qcf figure{margin:0;flex:1;min-width:200px;max-width:420px}.qcf img{width:100%;max-height:300px;object-fit:contain;border-radius:10px;display:block}</style>
-<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><a class="b ghost" href="/admin/agents">🤖 Агенти</a> <form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a> <form method="post" action="/admin/logout-all" style="display:inline"><button class="b ghost" title="Закрити адмінку на всіх телефонах і компʼютерах">⎋ Вийти всюди</button></form></span></header>
+<header class="top"><span class="logo">✳ Čestitam · CRM</span><span><a class="b ghost" href="/admin/agents">🤖 Агенти</a> <a class="b ghost" href="/admin/support">💬 Підтримка</a> <form method="post" action="/admin/test-order" style="display:inline"><button class="b ghost">+ Тестове замовлення</button></form> <a class="muted" href="/admin/export.csv">⬇ CSV</a> <form method="post" action="/admin/logout-all" style="display:inline"><button class="b ghost" title="Закрити адмінку на всіх телефонах і компʼютерах">⎋ Вийти всюди</button></form></span></header>
 ${problemsBox(everything)}<div class="kpis">${tiles}</div>
 <form class="flt" method="get" action="/admin" style="display:flex"><input name="q" value="${esc(q)}" placeholder="Пошук: номер, ім'я, телефон, email"><select name="st">${opts}</select><button class="b">Знайти</button></form>
 <p class="muted">Знайдено: ${list.length}. Оплата: ${PAYMENT_MODE}, автонадсилання: ${AUTO_SEND ? 'так' : 'ні (після перевірки)'}</p>${rows || '<p>Нічого не знайдено.</p>'}`);
 }
 function problemsBox(orders) {   // зведення агентів: усе, що потребує вашої уваги
-  const pr = agents.problemsNow(orders, DATA), w = agents.watchdogState(DATA);
+  const pr = [...agents.problemsNow(orders, DATA), ...support.problems()], w = agents.watchdogState(DATA);
   if (PAYMENT_MODE === 'none') pr.unshift({ text: 'PAYMENT_MODE=none: замовлення йдуть у рендер БЕЗ оплати. Для роботи поставте manual.' });
   if (PAYMENT_MODE === 'mock' && ENV.MOCK_PAY_ALL === '1') pr.unshift({ text: 'MOCK_PAY_ALL=1: будь-хто може «оплатити» кнопкою імітації. Вимкніть.' });
   if (!ADMIN_HASH) pr.unshift({ text: 'ADMIN_TOKEN закороткий (менше 24 символів): адмінка не пускає. Задайте довший.' });
   if (ADMIN_TOKEN && ENV.ADMIN_TOKEN_SHA256) pr.unshift({ text: 'У .env є і ADMIN_TOKEN, і ADMIN_TOKEN_SHA256: рядок ADMIN_TOKEN можна прибрати.' });
   if (!pr.length) return `<p class="okbox">✓ Проблем немає. Сторож сервера: ${w ? `перевірка ${w.ageMin} хв тому` : '—'}. Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p>`;
-  return `<section class="card probs"><b>⚠️ Проблеми (${pr.length})</b><ul>${pr.map(x => `<li>${x.o ? `<a href="/admin?q=${esc(x.o.no || x.o.id)}">№ ${esc(x.o.no || '')} ${esc(x.o.childName)}</a>: ` : ''}${esc(x.text)}</li>`).join('')}</ul>
+  return `<section class="card probs"><b>⚠️ Проблеми (${pr.length})</b><ul>${pr.map(x => `<li>${x.link ? `<a href="${esc(x.link)}">${esc(x.text)}</a>` : `${x.o ? `<a href="/admin?q=${esc(x.o.no || x.o.id)}">№ ${esc(x.o.no || '')} ${esc(x.o.childName)}</a>: ` : ''}${esc(x.text)}`}</li>`).join('')}</ul>
 <p class="muted">Telegram: ${ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID ? 'увімкнено' : 'не налаштовано'}</p></section>`;
 }
 const btn = (o, act, label) => `<form method="post" action="/admin/${o.id}/${act}"><button class="b">${label}</button></form> `;
@@ -458,6 +462,7 @@ const server = http.createServer(async (req, res) => {
     cors(req, res);
     if (req.method === 'OPTIONS') return send(res, 204, '');
     const u = new URL(req.url, PUBLIC_URL), p = u.pathname;
+    let mm;
 
     if (req.method === 'GET' && p === '/health') {   // для сторожа: чи не завис рендер / черга (без особистих даних)
       const all = listOrders().filter(o => !o.test), now = Date.now();
@@ -490,6 +495,31 @@ const server = http.createServer(async (req, res) => {
       return send(res, 201, { id, no: o.no, status: o.status, url: `${PUBLIC_URL}/o/${id}/${o.key}` });
     }
 
+    // ---------- підтримка: віджет, AI-чат, звернення до оператора ----------
+    if (p.startsWith('/api/support/')) {
+      const ip = clientIp(req);
+      const json = async (n) => { try { return JSON.parse((await readBody(req, n)).toString('utf8')) || {}; } catch (e) { if (e.code === 413) throw e; return {}; } };
+      const ord = (x) => { const o = x && load(String(x.id || '')); return o && typeof x.key === 'string' && safeEq(o.key, x.key) ? o : null; };
+      if (req.method === 'GET' && p === '/api/support/widget.css') return send(res, 200, widgetCss(), { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-cache' });
+      if (req.method === 'GET' && p === '/api/support/widget.js') return send(res, 200, widgetJs(), { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+      if (req.method === 'POST' && p === '/api/support/chat') {
+        const b = await json(20000);
+        const r = await support.chat({ history: b.history, lang: b.lang, order: ord(b.order), ip });
+        return send(res, r.error ? 400 : 200, r, { 'Cache-Control': 'no-store' });
+      }
+      if (req.method === 'POST' && p === '/api/support/ticket') {
+        const b = await json(8000);
+        const r = support.createTicket({ name: b.name, email: b.email, text: b.text, lang: b.lang, order: ord(b.order), ip });
+        return send(res, r.error === 'too_many' ? 429 : r.error ? 400 : 201, r, { 'Cache-Control': 'no-store' });
+      }
+      if ((mm = /^\/api\/support\/ticket\/(T-\d+)\/([a-f0-9]{32})$/.exec(p))) {
+        const t = support.getTicket(mm[1], mm[2]); if (!t) return send(res, 404, { error: 'not_found' });
+        if (req.method === 'GET') return send(res, 200, support.publicT(t), { 'Cache-Control': 'no-store' });
+        if (req.method === 'POST') { const b = await json(8000); const r = support.clientMessage(t, b.text, ip); return send(res, r.error === 'too_many' ? 429 : r.error ? 400 : 200, r); }
+      }
+      return send(res, 404, { error: 'not_found' });
+    }
+
     // Google Таблиця: =IMPORTDATA("https://…/api/export.csv?token=EXPORT_TOKEN"), лише дані замовлень, без фото
     if (req.method === 'GET' && p === '/api/export.csv') {
       const t = u.searchParams.get('token') || '';
@@ -519,7 +549,6 @@ const server = http.createServer(async (req, res) => {
       return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
     }
 
-    let mm;
     // оплата: /o/<id>/<key>/pay | retry | mock/ok | mock/fail
     if (req.method === 'POST' && (mm = /^\/o\/([\w-]+)\/([a-f0-9]{32})\/(pay|retry|mock\/ok|mock\/fail)$/.exec(p))) {
       const o = load(mm[1]); if (!o || !safeEq(o.key, mm[2])) return send(res, 404, {});
@@ -579,6 +608,12 @@ const server = http.createServer(async (req, res) => {
         return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
       }
       if (p === '/admin/agents' && req.method === 'GET') return send(res, 200, agentsPage(), { 'Cache-Control': 'no-store' });
+      if (p === '/admin/support' && req.method === 'GET') return send(res, 200, page('Підтримка · CRM', support.adminPage(esc), 'uk'), { 'Cache-Control': 'no-store' });
+      if ((mm = /^\/admin\/support\/(T-\d+)\/(reply|close)$/.exec(p)) && req.method === 'POST') {
+        if (mm[2] === 'close') support.closeTicket(mm[1]);
+        else { const f = new URLSearchParams((await readBody(req, 12000)).toString('utf8')); await support.operatorReply(mm[1], f.get('text'), 'CRM'); }
+        return send(res, 303, '', { Location: '/admin/support' });
+      }
       if (p === '/admin/report.json' && req.method === 'GET') return send(res, 200, report.reportFeed(DATA, listOrders(), u.searchParams.get('day')), { 'Cache-Control': 'no-store' });
       if (p === '/admin/agents.json' && req.method === 'GET') return send(res, 200, agents.agentsFeed({ dataDir: DATA, orders: listOrders(), now: NOW, busy, tg: !!(ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID) }), { 'Cache-Control': 'no-store' });
       if (p === '/admin/export.csv') { event({ msg: 'адмін: експорт CSV' }); return send(res, 200, ordersCsv(), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="zamovlennya.csv"', 'Cache-Control': 'no-store' }); }
