@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { resolveName } = require('../src/names');
 const agents = require('./agents');
 const { agentsPage } = require('./agents-page');
+const report = require('./report');
 const { spawn } = require('child_process');
 // рендер у дочірньому процесі: сервер лишається чуйним, поки йде ffmpeg
 function renderInChild(job) {
@@ -49,6 +50,7 @@ function save(o) {
   o.updatedAt = new Date().toISOString();
   const f = path.join(odir(o.id), 'order.json');
   fs.writeFileSync(f + '.tmp', JSON.stringify(o, null, 2)); fs.renameSync(f + '.tmp', f);
+  report.sheetSync(o, (r) => event(r));   // Google-таблиця: лише оплачені замовлення
 }
 const listOrders = () => fs.readdirSync(ORDERS).map(load).filter(Boolean).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 // короткий номер замовлення для клієнта (6 цифр, унікальний): вхід на /porudzbina = email + номер
@@ -192,6 +194,7 @@ async function tick() {
 for (const o of listOrders()) if (o.status === 'rendering') { o.status = 'queued'; log(o, 'перезапуск сервера'); save(o); }
 setInterval(tick, 5000);
 agents.startMorning({ listOrders, dataDir: DATA, publicUrl: PUBLIC_URL });
+report.startReport({ listOrders, dataDir: DATA, event });
 
 // ---------- приватність: автоматичне видалення ----------
 const daysSince = (t) => t ? (Date.now() - Date.parse(t)) / 864e5 : 0;
@@ -510,6 +513,7 @@ const server = http.createServer(async (req, res) => {
         return send(res, 303, '', { Location: `/o/${o.id}/${o.key}` });
       }
       if (p === '/admin/agents' && req.method === 'GET') return send(res, 200, agentsPage(), { 'Cache-Control': 'no-store' });
+      if (p === '/admin/report.json' && req.method === 'GET') return send(res, 200, report.reportFeed(DATA, listOrders(), u.searchParams.get('day')), { 'Cache-Control': 'no-store' });
       if (p === '/admin/agents.json' && req.method === 'GET') return send(res, 200, agents.agentsFeed({ dataDir: DATA, orders: listOrders(), now: NOW, busy, tg: !!(ENV.TG_BOT_TOKEN && ENV.TG_CHAT_ID) }), { 'Cache-Control': 'no-store' });
       if (p === '/admin/export.csv') { event({ msg: 'адмін: експорт CSV' }); return send(res, 200, ordersCsv(), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="zamovlennya.csv"', 'Cache-Control': 'no-store' }); }
       if ((mm = /^\/admin\/([\w-]+)\/note$/.exec(p)) && req.method === 'POST') {
