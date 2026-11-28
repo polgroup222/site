@@ -3,7 +3,7 @@
 (function () {
 const T = {
 'sr-Latn': {
-  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', navMy: 'Moja porudžbina', langLabel: 'Jezik', soundOn: '🔈 Uključi zvuk', soundOff: '🔇 Isključi zvuk', cta: 'Napravi čestitku',
+  skip: 'Pređi na porudžbinu', brand: 'Čestitam', navPeek: 'Iz filma', navHow: 'Kako radi', navFaq: 'Pitanja', navMy: 'Moja porudžbina', langLabel: 'Jezik', soundOn: '🔇 Uključi zvuk', soundOff: '🔊 Isključi zvuk', cta: 'Napravi čestitku',
   edition: 'Novogodišnje izdanje',
   heroTitle: 'Novogodišnja bajka za vaše dete',
   heroLead: 'Uronite u novogodišnju čestitku od Deda Mraza: sa osmehom će pozvati vaše dete po imenu, zlatnim slovima ga upisati u svoju čarobnu knjigu i okačiti njegovu fotografiju na zid svoje kućice.',
@@ -30,7 +30,7 @@ const T = {
   foot: 'Mali film za veliko verovanje.', footContact: 'Kontakt', footLegal: 'Pravila', privacy: 'Privatnost',
 },
 uk: {
-  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', navMy: 'Моє замовлення', langLabel: 'Мова', soundOn: '🔈 Увімкнути звук', soundOff: '🔇 Вимкнути звук', cta: 'Створити привітання',
+  skip: 'Перейти до замовлення', brand: 'Čestitam', navPeek: 'З фільму', navHow: 'Як це працює', navFaq: 'Запитання', navMy: 'Моє замовлення', langLabel: 'Мова', soundOn: '🔇 Увімкнути звук', soundOff: '🔊 Вимкнути звук', cta: 'Створити привітання',
   edition: 'Новорічний випуск',
   heroTitle: 'Новорічна казка для вашої дитини',
   heroLead: 'Пориньте в новорічне привітання від Діда Мороза: він з усмішкою покличе вашу дитину на ім’я, золотими літерами впише його у свою чарівну книгу й повісить її фото на стіні своєї хатинки.',
@@ -175,6 +175,7 @@ if ('IntersectionObserver' in window) {
   const vids = [...document.querySelectorAll('.stage-vid')], snd = document.querySelector('#sound');
   const c = navigator.connection || {};
   if (vids.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches || c.saveData || /(^|-)2g|3g/.test(c.effectiveType || '')) return;
+  vids.forEach(v => { v.muted = true; v.defaultMuted = true; });   // на старті завжди без звуку; звук вмикає лише кнопка
   let cur = 0;
   const show = (i) => { vids.forEach((v, k) => v.classList.toggle('on', k === i)); };
   const load = (v) => fetch(v.dataset.src).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
