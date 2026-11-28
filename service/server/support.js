@@ -60,8 +60,10 @@ const buckets = new Map();
 function limited(key, max, windowMs) {
   const now = Date.now(), arr = (buckets.get(key) || []).filter(t => now - t < windowMs);
   if (arr.length >= max) { buckets.set(key, arr); return true; }
-  arr.push(now); buckets.set(key, arr); if (buckets.size > 20000) buckets.clear(); return false;
+  arr.push(now); buckets.set(key, arr); return false;
 }
+// раз на 10 хв прибираємо лише застарілі записи (повне очищення дозволило б скинути ліміти, засипавши сервер запитами)
+setInterval(() => { const now = Date.now(); for (const [k, arr] of buckets) if (!arr.length || now - arr[arr.length - 1] > 864e5) buckets.delete(k); }, 600e3).unref();
 
 // ---------- знання для AI ----------
 const SYSTEM = `You are the customer support assistant of Čestitam (cestitam.eu): a personalised New Year video greeting from Deda Mraz for a child.
@@ -83,7 +85,7 @@ Facts (in Serbian):
 - Posle slanja porudžbine otvara se stranica porudžbine sa plaćanjem. Izrada počinje odmah posle uplate. Cenu i način plaćanja kupac vidi na toj stranici pre plaćanja.
 - Video je obično gotov 15 do 30 minuta posle uplate; u danima pred Novu godinu može potrajati do nekoliko sati. Svaki video pregledamo pre slanja.
 - Gotov video se pojavljuje na stranici porudžbine: može se gledati na telefonu ili TV-u, preuzeti u Full HD kvalitetu i podeliti. Ako je upisan email, stiže i link na email.
-- Stranica porudžbine: link koji se otvori posle slanja, ili „Moja porudžbina“ na sajtu (cestitam.eu/porudzbina): upišu se email i broj porudžbine (npr. KM-00006).
+- Stranica porudžbine: link koji se otvori posle slanja, ili „Moja porudžbina“ na sajtu (cestitam.eu/porudzbina): upišu se telefon ili email i ceo broj porudžbine sa slovima (npr. KM-00006).
 - Privatnost: fotografiju koristimo samo za taj video. Fotografiju brišemo 30 dana posle slanja videa, video posle 60 dana; neplaćenu porudžbinu posle 7 dana. Podatke ne prodajemo i ne koristimo za reklame. Kupac može tražiti brisanje podataka preko operatera.
 - Sajt je na srpskom (latinica i ćirilica) i ukrajinskom.
 - Operater: dugme „Pišite operateru“ u ovom četu. Operater odgovara uskoro, a odgovor se vidi ovde u četu.`;
